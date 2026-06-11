@@ -1,0 +1,38 @@
+{
+  "skill_name": "bggg-tiktok-cut",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "这里有一个 Seedance 生成的横屏产品视频和一段 BGM，帮我剪成 30 秒 TikTok 竖屏广告，加前 3 秒 hook、大字字幕和轻 BGM。",
+      "expected_output": "Creates a project folder, probes source media, writes an edit_plan.json with 1080x1920 target, uses blur-bg or cover reframe, renders final_tiktok.mp4, and reports paths plus verification.",
+      "files": [],
+      "expectations": [
+        "The plan uses TikTok vertical target dimensions.",
+        "The workflow includes media probing and frame inspection before final render.",
+        "The final output path and render_report.json path are provided."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "把这个 AI 视频素材文件夹批量做成 5 条 TikTok 短视频，每条不同 hook，保留项目文件和字幕文件。",
+      "expected_output": "Creates separate plans or project folders for each output, keeps artifacts organized, renders named MP4s, and preserves captions/metadata.",
+      "files": [],
+      "expectations": [
+        "The workflow does not overwrite outputs from previous variants.",
+        "Each variant has its own hook or plan.",
+        "Captions and render reports are retained."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "这个 AI 生成的视频没有旁白，只有画面。请做一个适合 TikTok 的视觉向短片，加标题、节奏字幕和音乐。",
+      "expected_output": "Uses visual inspection rather than transcript-first logic, creates captions/overlays from the supplied concept, adds BGM, and renders a TikTok-safe vertical video.",
+      "files": [],
+      "expectations": [
+        "The skill handles no-speech source material without requiring Whisper.",
+        "The edit plan includes overlays or captions that carry the story.",
+        "The output includes audio through BGM or a safe fallback."
+      ]
+    }
+  ]
+}

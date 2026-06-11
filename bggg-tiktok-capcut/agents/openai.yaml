@@ -1,0 +1,4 @@
+interface:
+  display_name: "BGGG TikTok CapCut"
+  short_description: "Build and validate CapCut drafts from AI videos."
+  default_prompt: "Use this skill to create CapCut drafts from AI videos, extract template styles, validate draft visibility, sample AI artifact frames, plan repairs, or run local RIFE interpolation."

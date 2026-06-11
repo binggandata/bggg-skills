@@ -13,6 +13,12 @@ Created by [@binggandata](https://github.com/binggandata) · [小红书](https:/
 - [`bggg-creator-image2psd`](./bggg-creator-image2psd): turn one or more images into layered PSD files, with Codex/imagegen-assisted workflows, full-canvas PNG layer export, color splitting, white-background removal, and a pure-Python PSD writer.
 - [`bggg-creator-image2ppt`](./bggg-creator-image2ppt): turn images, screenshots, HTML, or SVG designs into editable PPTX files, with Codex/imagegen-assisted component reconstruction, editable text boxes, native shape rebuilding, and HTML/SVG parsing.
 - [`bggg-skill-taotie`](./bggg-skill-taotie): a skill evolution engine that compares, analyzes, and absorbs useful patterns from one skill into another.
+- [`bggg-tiktok-search`](./bggg-tiktok-search): read-only TikTok research through a real local Chrome session, producing JSON/CSV/Markdown notes and screenshot evidence.
+- [`bggg-tiktok-downloader`](./bggg-tiktok-downloader): download TikTok single videos or visible creator posts with `yt-dlp`, with a tikwm fallback for single videos.
+- [`bggg-tiktok-readvideo`](./bggg-tiktok-readvideo): turn TikTok/UGC/local videos into metadata, transcripts, scenes, keyframes, contact sheets, and timelines that Codex can read.
+- [`bggg-tiktok-cut`](./bggg-tiktok-cut): render 9:16 TikTok edits from AI videos, local footage, or talking-head clips using JSON edit plans and FFmpeg.
+- [`bggg-tiktok-capcut`](./bggg-tiktok-capcut): create new editable CapCut drafts from template drafts, extract styles, validate draft structure, and check AI-video artifacts.
+- [`bggg-tiktok-seedance`](./bggg-tiktok-seedance): generate single or concurrent Seedance videos through a user-configured Gateway, with reference media and virtual assets.
 
 ## Install
 
@@ -29,6 +35,7 @@ Copy a skill into Codex:
 mkdir -p ~/.codex/skills
 cp -R bggg-creator-image2psd ~/.codex/skills/
 cp -R bggg-creator-image2ppt ~/.codex/skills/
+cp -R bggg-tiktok-readvideo ~/.codex/skills/
 ```
 
 Or symlink it while developing:
@@ -36,6 +43,7 @@ Or symlink it while developing:
 ```bash
 ln -s "$PWD/bggg-creator-image2psd" ~/.codex/skills/bggg-creator-image2psd
 ln -s "$PWD/bggg-creator-image2ppt" ~/.codex/skills/bggg-creator-image2ppt
+ln -s "$PWD/bggg-tiktok-readvideo" ~/.codex/skills/bggg-tiktok-readvideo
 ```
 
 If the skill has `scripts/requirements.txt`, install its dependencies:
@@ -70,15 +78,22 @@ bggg-skills/
 │   ├── assets/
 │   ├── evals/
 │   └── projects/
-└── bggg-skill-taotie/
-    ├── SKILL.md
-    ├── README.md
-    ├── INSTALL.md
-    ├── references/
-    └── evals/
+├── bggg-skill-taotie/
+│   ├── SKILL.md
+│   ├── README.md
+│   ├── INSTALL.md
+│   ├── references/
+│   └── evals/
+├── bggg-tiktok-search/
+├── bggg-tiktok-downloader/
+├── bggg-tiktok-readvideo/
+├── bggg-tiktok-cut/
+├── bggg-tiktok-capcut/
+└── bggg-tiktok-seedance/
 ```
 
 `projects/` is the local runtime output directory for each skill. The open-source repo keeps only `.gitkeep` there and ignores generated images, PSDs, zips, and process files.
+The TikTok skills also ignore downloaded videos, screenshots, CSV/JSON research exports, subtitles, transcripts, CapCut drafts, and Seedance outputs.
 
 ## Adding More Skills
 

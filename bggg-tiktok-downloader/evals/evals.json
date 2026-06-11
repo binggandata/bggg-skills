@@ -1,0 +1,23 @@
+{
+  "skill_name": "bggg-tiktok-downloader",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我下载这个 TikTok 视频到本地：https://www.tiktok.com/@demo/video/1234567890123456789",
+      "expected_output": "识别为单视频下载，调用 download_tiktok.py，输出本地文件路径和 manifest。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "把这个博主最新 20 个 TikTok 视频下载下来：https://www.tiktok.com/@demo",
+      "expected_output": "识别为 author 模式，传 --limit 20，默认下载到 projects/downloads/tiktok，或按用户指定 --output-dir。",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "下载 @demo 的所有可见视频",
+      "expected_output": "把 @demo 规范化为 TikTok 博主主页，传 --mode author --limit 0。",
+      "files": []
+    }
+  ]
+}

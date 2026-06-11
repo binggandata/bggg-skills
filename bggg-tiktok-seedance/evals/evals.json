@@ -1,0 +1,25 @@
+{
+  "skill_name": "bggg-tiktok-seedance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把这个 QC 批处理剩余 6 个文件夹并发发给 Seedance 生成视频，已有输出的跳过。",
+      "expected_output": "使用并发 wrapper 或等效并发流程，不串行处理；说明每个 folder 的输出状态。"
+    },
+    {
+      "id": 2,
+      "prompt": "Seedance 报真人问题了，帮我用虚拟资产重试，不要把人物遮挡掉。",
+      "expected_output": "上传素材、注册虚拟资产、用 asset:// 引用重试；不遮挡人物。"
+    },
+    {
+      "id": 3,
+      "prompt": "用这些球场观众席图片和视频参考生成 Seedance 视频。",
+      "expected_output": "提交前先检查所有输入图片/视频是否包含真人；观众席含真人时，本次 task 的全部图片和视频媒体都先上传公网并注册 BytePlus 虚拟资产，等待全部 Active 后统一用 asset:// 引用提交，不直接用普通 URL，也不遮挡或删除人物。"
+    },
+    {
+      "id": 4,
+      "prompt": "图片里只有商品包装，参考视频是无人仓库场景，帮我生成 720p Seedance。",
+      "expected_output": "确认输入图片/视频不含真人后，可直接使用云端可访问的公开 URL/CDN URL 提交；仍需避免 localhost、局域网或本地路径作为云端 fetch 引用。"
+    }
+  ]
+}

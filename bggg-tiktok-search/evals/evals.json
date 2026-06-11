@@ -1,0 +1,60 @@
+{
+  "skill_name": "bggg-tiktok-search",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我在 TikTok 搜索 portable blender，采集前 30 条视频结果，保存 CSV 和截图。",
+      "expected_output": "使用 bggg-tiktok-search 的 CDP 脚本连接本地 Chrome，输出 JSON/CSV/Markdown 和截图路径。",
+      "files": [],
+      "expectations": [
+        "先运行 check-cdp 或确认 CDP 9222 可用",
+        "使用 search 命令而不是第三方 TikTok API",
+        "结果包含调研包路径和采集数量"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "研究这个博主主页 https://www.tiktok.com/@creator 最近 50 条视频，先把链接和标题抓出来。",
+      "expected_output": "使用 creator 命令采集主页可见视频，输出结构化文件和截图证据。",
+      "files": [],
+      "expectations": [
+        "识别输入为 TikTok 博主主页",
+        "使用 Playwright connect_over_cdp 连接真实 Chrome",
+        "输出包含 JSON/CSV/Markdown 路径"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "我已经在 Chrome 打开了 TikTok 搜索结果页，你从当前页面提取视频卡片并截图。",
+      "expected_output": "使用 current 和 screenshot 能力从当前 CDP 页面提取结果。",
+      "files": [],
+      "expectations": [
+        "不重新要求用户提供 URL",
+        "使用 current --kind videos",
+        "保留截图作为证据"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "@chrome 我已经登录 TikTok，帮我搜索 litbuy 相关红人并采样结果。",
+      "expected_output": "在 CDP 不可用或用户明确要求 @chrome 时，使用 chrome:Chrome 接管用户 Chrome 标签页，采集可见结果并保存手动调研包。",
+      "files": [],
+      "expectations": [
+        "识别 Chrome 插件路径适合复用登录态",
+        "保存 collected_items.json、research_notes.md 和截图",
+        "不调用第三方 TikTok API"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "TikTok 页面脚本抓不到，用 computer-use 直接操作我本机 Chrome 搜索 portable blender，并把可见结果整理出来。",
+      "expected_output": "使用 computer-use:computer-use 操作本机 Chrome，按屏幕可见内容搜索、滚动、截图并输出手动调研包。",
+      "files": [],
+      "expectations": [
+        "先读取当前 app 状态再操作 Chrome",
+        "遇到验证码或风控交给用户处理",
+        "记录可见 URL、handle、标题、指标、截图路径和 raw_text"
+      ]
+    }
+  ]
+}

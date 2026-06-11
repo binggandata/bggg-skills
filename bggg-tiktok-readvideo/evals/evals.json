@@ -1,0 +1,49 @@
+{
+  "skill_name": "bggg-tiktok-readvideo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Use bggg-tiktok-readvideo to analyze /tmp/sample-tiktok.mp4. Generate metadata, transcript if possible, scene keyframes, contact_sheet.jpg, timeline.md, and explain the strongest hook candidates with timestamps.",
+      "expected_output": "A project folder is created under projects/, analysis_manifest.json indexes all artifacts, and the response cites timeline/contact sheet paths plus timestamped hook candidates.",
+      "files": [],
+      "expectations": [
+        "Runs scripts/analyze_video.py before making claims about video content",
+        "Mentions timeline.md, scenes.json, transcript.srt or the reason transcription was skipped",
+        "Uses timestamps when discussing hooks"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I have a product QC UGC video. Use bggg-tiktok-readvideo to turn it into a 15-25 second TikTok edit plan focused on QC photos, warehouse inspection, shipping speed, and CTA.",
+      "expected_output": "The skill instructs Codex to analyze the video context first, then create output/edit_plan.json with source timestamps, hook/proof/CTA labels, and short captions.",
+      "files": [],
+      "expectations": [
+        "Creates or requests output/edit_plan.json before rendering",
+        "Prioritizes hook, proof scenes, and CTA",
+        "Keeps TikTok defaults 9:16 1080x1920 and burned captions"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "This video has no voiceover. Use bggg-tiktok-readvideo to understand the visual sequence and find the best product shots.",
+      "expected_output": "The skill still produces visual context with metadata, scenes, keyframes, contact sheet, timeline, and handles missing transcript gracefully.",
+      "files": [],
+      "expectations": [
+        "Does not fail solely because transcript is missing",
+        "Relies on contact_sheet.jpg and keyframes for visual reasoning",
+        "States any skipped optional audio/OCR steps clearly"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Batch transcribe every downloaded TikTok video under downloads/tiktok and keep the original language.",
+      "expected_output": "Runs scripts/transcribe_video.py with --recursive, skips existing transcripts unless force is requested, and returns transcript plus transcription_manifest.json paths.",
+      "files": [],
+      "expectations": [
+        "Uses the standalone transcription script instead of the full visual analysis pipeline",
+        "Keeps --language auto by default and does not translate",
+        "Mentions transcript paths and the manifest path"
+      ]
+    }
+  ]
+}

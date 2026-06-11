@@ -1,0 +1,6 @@
+projects/*
+!projects/.gitkeep
+references/source-projects/
+__pycache__/
+*.pyc
+.DS_Store
