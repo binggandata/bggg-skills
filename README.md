@@ -21,6 +21,7 @@ Created by [@binggandata](https://github.com/binggandata) · [小红书](https:/
 - [`sif-keyword-scout`](./sif-keyword-scout)：亚马逊 Sif 关键词三表处理、分层评级、竞品弱点/广告缺口分析，并输出 PD 主攻词单与 Word 报告。
 - [`sif-keyword-tracker`](./sif-keyword-tracker)：同一 ASIN 有历史记录时，对比 1-7 天窗口内两期 PD 词单，输出词库更新与投放建议报告。
 - [`web-access`](./web-access)：第三方 MIT skill，由 [eze-is/web-access](https://github.com/eze-is/web-access) 提供；在 Sif 工作流中可选用于浏览器 CDP 自动导出。
+- [`xquik-x-research`](./xquik-x-research)：通过 Xquik 做 API-key-only X 调研，覆盖 tweet search、profile lookup、follower export、media download、monitor、webhook 和 MCP setup。
 
 ## 安装
 
@@ -39,6 +40,7 @@ cp -R bggg-creator-image2psd ~/.codex/skills/
 cp -R bggg-creator-image2ppt ~/.codex/skills/
 cp -R bggg-tiktok-readvideo ~/.codex/skills/
 cp -R sif-keyword-scout sif-keyword-tracker web-access ~/.codex/skills/
+cp -R xquik-x-research ~/.codex/skills/
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -51,6 +53,7 @@ ln -s "$PWD/bggg-tiktok-readvideo" ~/.codex/skills/bggg-tiktok-readvideo
 ln -s "$PWD/sif-keyword-scout" ~/.codex/skills/sif-keyword-scout
 ln -s "$PWD/sif-keyword-tracker" ~/.codex/skills/sif-keyword-tracker
 ln -s "$PWD/web-access" ~/.codex/skills/web-access
+ln -s "$PWD/xquik-x-research" ~/.codex/skills/xquik-x-research
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -108,7 +111,8 @@ bggg-skills/
 ├── bggg-tiktok-capcut/
 ├── sif-keyword-scout/
 ├── sif-keyword-tracker/
-└── web-access/
+├── web-access/
+└── xquik-x-research/
 ```
 
 `projects/` 是 skill 运行时的本地项目输出目录。开源仓库只保留 `.gitkeep`，不会提交实际生成的图片、PSD、zip 或过程文件。
