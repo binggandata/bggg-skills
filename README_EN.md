@@ -21,6 +21,7 @@ Created by [@binggandata](https://github.com/binggandata) · [小红书](https:/
 - [`sif-keyword-scout`](./sif-keyword-scout): process three Amazon Sif keyword exports, grade keyword layers, analyze competitor weaknesses and ad gaps, then generate PD focus keyword sheets and Word reports.
 - [`sif-keyword-tracker`](./sif-keyword-tracker): compare two historical PD keyword lists for the same ASIN within a 1-7 day window and generate keyword-change and campaign-action reports.
 - [`web-access`](./web-access): third-party MIT skill from [eze-is/web-access](https://github.com/eze-is/web-access); optionally used by the Sif workflow for browser/CDP exports.
+- [`xquik-x-research`](./xquik-x-research): API-key-only X research skill for tweet search, profile lookup, follower exports, media downloads, monitors, webhooks, and MCP setup through Xquik.
 
 ## Install
 
@@ -39,6 +40,7 @@ cp -R bggg-creator-image2psd ~/.codex/skills/
 cp -R bggg-creator-image2ppt ~/.codex/skills/
 cp -R bggg-tiktok-readvideo ~/.codex/skills/
 cp -R sif-keyword-scout sif-keyword-tracker web-access ~/.codex/skills/
+cp -R xquik-x-research ~/.codex/skills/
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -51,6 +53,7 @@ ln -s "$PWD/bggg-tiktok-readvideo" ~/.codex/skills/bggg-tiktok-readvideo
 ln -s "$PWD/sif-keyword-scout" ~/.codex/skills/sif-keyword-scout
 ln -s "$PWD/sif-keyword-tracker" ~/.codex/skills/sif-keyword-tracker
 ln -s "$PWD/web-access" ~/.codex/skills/web-access
+ln -s "$PWD/xquik-x-research" ~/.codex/skills/xquik-x-research
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -108,7 +111,8 @@ bggg-skills/
 ├── bggg-tiktok-capcut/
 ├── sif-keyword-scout/
 ├── sif-keyword-tracker/
-└── web-access/
+├── web-access/
+└── xquik-x-research/
 ```
 
 `projects/` is the local runtime output directory for each skill. The open-source repo keeps only `.gitkeep` there and ignores generated images, PSDs, zips, and process files.
