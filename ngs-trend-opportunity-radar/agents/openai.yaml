@@ -1,0 +1,6 @@
+interface:
+  display_name: "NGS 多平台趋势选品"
+  short_description: "用趋势、VOC 与商业数据形成可复查的产品机会池"
+  default_prompt: "Use $ngs-trend-opportunity-radar and start by asking for category, market, platform, and output location before collecting data."
+policy:
+  allow_implicit_invocation: true

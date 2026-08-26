@@ -22,6 +22,7 @@ Created by [@binggandata](https://github.com/binggandata) · [小红书](https:/
 - [`bggg-tiktok-cut`](./bggg-tiktok-cut)：用 JSON edit plan 和 FFmpeg 把 AI 视频、本地素材或口播素材剪成 9:16 TikTok 成片。
 - [`bggg-tiktok-capcut`](./bggg-tiktok-capcut)：基于已有 CapCut 模板草稿生成新草稿，提取模板样式，验证草稿结构，并检查 AI 视频痕迹。
 - [`tiktok-gemini-video-workflow`](./tiktok-gemini-video-workflow)：把飞书 Base 中的产品图和爆款视频转成可追踪、可返工的 TikTok 带货视频工作流，覆盖 Gemini/Flow 额度路由、9:16 九宫格、逐帧提示词、尾帧续接、后期验收和成品回传。
+- [`ngs-trend-opportunity-radar`](./ngs-trend-opportunity-radar)：从用户给定的大品类中拆分商品方向，使用 Google Trends、TikTok、Reddit、Sorftime 与 Amazon 书面评论交叉验证，输出可追溯的趋势选品报告和研究数据工作簿。
 - [`sif-keyword-scout`](./sif-keyword-scout)：亚马逊 Sif 关键词三表处理、分层评级、竞品弱点/广告缺口分析，并输出 PD 主攻词单与 Word 报告。
 - [`sif-keyword-tracker`](./sif-keyword-tracker)：同一 ASIN 有历史记录时，对比 1-7 天窗口内两期 PD 词单，输出词库更新与投放建议报告。
 - [`web-access`](./web-access)：第三方 MIT skill，由 [eze-is/web-access](https://github.com/eze-is/web-access) 提供；在 Sif 工作流中可选用于浏览器 CDP 自动导出。
@@ -45,6 +46,7 @@ cp -R bggg-creator-image2ppt ~/.codex/skills/
 cp -R bggg-tiktok-search bggg-tiktok-downloader ~/.codex/skills/
 cp -R bggg-tiktok-readvideo ~/.codex/skills/
 cp -R bggg-tiktok-cut bggg-tiktok-capcut ~/.codex/skills/
+cp -R ngs-trend-opportunity-radar bggg-data-amazon ~/.codex/skills/
 cp -R sif-keyword-scout sif-keyword-tracker web-access ~/.codex/skills/
 cp -R xquik-x-research ~/.codex/skills/
 cp .sif-config.example.json ~/.codex/skills/
@@ -60,6 +62,8 @@ ln -s "$PWD/bggg-tiktok-downloader" ~/.codex/skills/bggg-tiktok-downloader
 ln -s "$PWD/bggg-tiktok-readvideo" ~/.codex/skills/bggg-tiktok-readvideo
 ln -s "$PWD/bggg-tiktok-cut" ~/.codex/skills/bggg-tiktok-cut
 ln -s "$PWD/bggg-tiktok-capcut" ~/.codex/skills/bggg-tiktok-capcut
+ln -s "$PWD/ngs-trend-opportunity-radar" ~/.codex/skills/ngs-trend-opportunity-radar
+ln -s "$PWD/bggg-data-amazon" ~/.codex/skills/bggg-data-amazon
 ln -s "$PWD/sif-keyword-scout" ~/.codex/skills/sif-keyword-scout
 ln -s "$PWD/sif-keyword-tracker" ~/.codex/skills/sif-keyword-tracker
 ln -s "$PWD/web-access" ~/.codex/skills/web-access
@@ -72,6 +76,7 @@ cp .sif-config.example.json ~/.codex/skills/
 ```bash
 python3 -m pip install -r ~/.codex/skills/bggg-creator-image2psd/scripts/requirements.txt
 python3 -m pip install -r ~/.codex/skills/bggg-creator-image2ppt/scripts/requirements.txt
+python3 -m pip install -r ~/.codex/skills/ngs-trend-opportunity-radar/scripts/requirements.txt
 ```
 
 Sif 关键词工作流依赖：
@@ -123,6 +128,7 @@ bggg-skills/
 ├── bggg-tiktok-cut/
 ├── bggg-tiktok-capcut/
 ├── tiktok-gemini-video-workflow/
+├── ngs-trend-opportunity-radar/
 ├── sif-keyword-scout/
 ├── sif-keyword-tracker/
 ├── web-access/
