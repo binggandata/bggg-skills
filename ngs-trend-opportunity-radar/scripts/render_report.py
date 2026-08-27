@@ -8,9 +8,10 @@ import base64
 import html
 import ipaddress
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
 COLORS = ["#176b45", "#e79245", "#4267a8", "#9a5ea8", "#d15b5b", "#648a70"]
@@ -45,12 +46,38 @@ def load_jsonl_files(paths: list[Path]) -> list[dict]:
     return list(rows.values())
 
 
+def validate_deep_selection(brief: dict, candidates: list[dict]) -> None:
+    """Refuse to render a deep report without an explicit, consistent Top N choice."""
+    selected_top_n = brief.get("selected_top_n")
+    declared_ids = {str(value) for value in (brief.get("deep_validation_candidate_ids") or []) if value}
+    selected_ids = {
+        str(row.get("candidate_id"))
+        for row in candidates
+        if (row.get("metrics") or {}).get("selected_for_deep_validation") and row.get("candidate_id")
+    }
+    if selected_top_n is None:
+        raise ValueError("Top N 尚未由用户明确选择；请先停在快筛报告并询问用户。")
+    try:
+        selected_top_n = int(selected_top_n)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("selected_top_n 必须是用户明确选择的正整数。") from exc
+    if selected_top_n < 1:
+        raise ValueError("selected_top_n 必须至少为 1。")
+    if len(declared_ids) != selected_top_n:
+        raise ValueError("deep_validation_candidate_ids 数量与 selected_top_n 不一致。")
+    if selected_ids != declared_ids:
+        raise ValueError("报告候选池与用户确认的 Top N 方向不一致。")
+
+
 def newest_snapshot(folder: Path, pattern: str) -> Path | None:
     files = list(folder.glob(pattern))
     return max(files, key=lambda path: path.stat().st_mtime_ns) if files else None
 
 
 def selected_normalized_files(run: Path, platform: str) -> list[Path]:
+    screening = run / "data" / "clean" / f"{platform}_screening.jsonl"
+    if screening.exists():
+        return [screening]
     raw = run / "data" / "raw"
     if platform == "tiktok":
         latest = newest_snapshot(raw, "tiktok_*.jsonl")
@@ -62,8 +89,43 @@ def selected_normalized_files(run: Path, platform: str) -> list[Path]:
     return [latest] if latest else []
 
 
+def trends_from_signals(run: Path) -> dict:
+    rows = load_jsonl(run / "data" / "signals" / "google_trends_product_terms.jsonl")
+    preferred_market = "US" if any(row.get("observed_market") == "US" for row in rows) else None
+    grouped: dict[str, list[dict]] = {}
+    for row in rows:
+        context = row.get("context") or {}
+        if context.get("window") != "12m":
+            continue
+        if preferred_market and row.get("observed_market") != preferred_market:
+            continue
+        match = re.search(r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|", str(row.get("text_raw") or ""))
+        grouped.setdefault(str(row.get("theme") or ""), []).append({
+            "date": match.group(1) if match else "",
+            "value": row.get("value") or 0,
+        })
+    series = [
+        {"name": theme, "values": sorted(values, key=lambda item: item["date"])}
+        for theme, values in grouped.items() if theme
+    ]
+    return {"series": series, "observed_market": preferred_market or "unknown"}
+
+
+def tiktok_signals_from_rows(rows: list[dict]) -> list[dict]:
+    best: dict[str, dict] = {}
+    for row in rows:
+        if row.get("content_type") != "video":
+            continue
+        context = row.get("context") or {}
+        theme = str(context.get("candidate_id") or "")
+        views = float((row.get("engagement") or {}).get("views") or (row.get("engagement") or {}).get("visible_metric") or 0)
+        if theme and (theme not in best or views > float((best[theme].get("metrics") or {}).get("views") or 0)):
+            best[theme] = {"theme": theme, "metrics": {"views": views}}
+    return list(best.values())
+
+
 def safe_url(value: object) -> str:
-    url = str(value or "")
+    url = str(value or "").strip()
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         return ""
@@ -75,7 +137,11 @@ def safe_url(value: object) -> str:
             return ""
     except ValueError:
         pass
-    return url
+    normalized_path = parsed.path.replace(" ", "") if hostname.endswith("media-amazon.com") else parsed.path
+    return parsed._replace(
+        path=quote(normalized_path, safe="/%:@"),
+        query=quote(parsed.query, safe="=&%:@?"),
+    ).geturl()
 
 
 def image_data_uri(value: object) -> str:
@@ -217,10 +283,12 @@ def actual_data(run: Path) -> dict:
     tiktok_files = selected_normalized_files(run, "tiktok")
     reddit_files = selected_normalized_files(run, "reddit")
     product_files = sorftime_product_files(run)
+    tiktok = load_jsonl_files(tiktok_files)
+    tiktok_signals = load_jsonl(run / "data" / "signals" / "tiktok.jsonl")
     return {
-        "trends": load_json(trend_files[-1], {}) if trend_files else {},
-        "tiktok": load_jsonl_files(tiktok_files),
-        "tiktok_signals": load_jsonl(run / "data" / "signals" / "tiktok.jsonl"),
+        "trends": load_json(trend_files[-1], {}) if trend_files else trends_from_signals(run),
+        "tiktok": tiktok,
+        "tiktok_signals": tiktok_signals or tiktok_signals_from_rows(tiktok),
         "reddit": load_jsonl_files(reddit_files),
         "reddit_gates": load_json(run / "analysis" / "reddit_sample_gates.json", {}) or {},
         "products": load_sorftime_products(product_files),
@@ -561,9 +629,16 @@ def main() -> int:
     run = Path(args.run_dir)
     pool = load_json(Path(args.pool), {}) or {}
     candidates = pool.get("candidates") or []
+    brief = load_json(Path(args.brief), {}) or {}
+    validate_deep_selection(brief, candidates)
     evidence = build_evidence_index(candidates)
     data = actual_data(run)
-    data["brief"] = load_json(Path(args.brief), {}) or {}
+    data["brief"] = brief
+    labels = data["brief"].get("seed_term_labels") or {}
+    for series in (data.get("trends") or {}).get("series") or []:
+        series["name"] = labels.get(series.get("name"), series.get("name"))
+    for row in data.get("tiktok_signals") or []:
+        row["theme"] = labels.get(row.get("theme"), row.get("theme"))
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "report.md").write_text(render_markdown(pool, data), encoding="utf-8")

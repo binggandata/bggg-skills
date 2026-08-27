@@ -63,10 +63,26 @@ def dedupe_reddit_rows(paths: list[Path]) -> dict[str, dict]:
 
 
 def selected_reddit_files(run_dir: Path) -> list[Path]:
+    screening = run_dir / "data" / "clean" / "reddit_screening.jsonl"
+    if screening.exists():
+        return [screening]
     raw = run_dir / "data" / "raw"
     visible = list(raw.glob("reddit_visible_*.jsonl"))
     candidates = visible or list(raw.glob("reddit*.jsonl"))
     return [max(candidates, key=lambda path: path.stat().st_mtime_ns)] if candidates else []
+
+
+def candidate_gate(gates: dict, candidate: dict, explicit_key: str) -> dict | None:
+    for key in (candidate.get(explicit_key), candidate.get("candidate_id"), candidate.get("theme")):
+        if key is not None and str(key) in gates:
+            return gates[str(key)]
+    return None
+
+
+def csv_is_not_run_placeholder(path: Path) -> bool:
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    return len(rows) == 1 and rows[0].get("status") == "not_run"
 
 
 def candidate_needs_tiktok_gate(candidate: dict) -> bool:
@@ -304,7 +320,7 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
     consistency["reddit_jsonl_unique_comments"] = reddit_comment_count
     for csv_name, expected in (("04_reddit_posts.csv", reddit_post_count), ("05_reddit_comments.csv", reddit_comment_count)):
         csv_path = staging_dir / csv_name
-        if csv_path.exists() and csv_row_count(csv_path) != expected:
+        if csv_path.exists() and csv_row_count(csv_path) != expected and not (expected == 0 and csv_is_not_run_placeholder(csv_path)):
             errors.append(f"reddit_csv_rows:{csv_name}:{csv_row_count(csv_path)}!=jsonl_rows:{expected}")
 
     reddit_gates_path = run_dir / "analysis" / "reddit_sample_gates.json"
@@ -318,8 +334,7 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
             ]
             if not all_reddit_evidence:
                 continue
-            theme_key = str(candidate.get("reddit_theme_key") or candidate.get("theme") or "")
-            actual = reddit_gates.get(theme_key)
+            actual = candidate_gate(reddit_gates, candidate, "reddit_theme_key")
             if not actual:
                 errors.append(f"{candidate.get('candidate_id')}:missing_reddit_sample_gate_analysis")
                 continue
@@ -350,8 +365,7 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
                 continue
             if not candidate_needs_tiktok_gate(candidate):
                 continue
-            theme_key = str(candidate.get("tiktok_theme_key") or candidate.get("theme") or "")
-            actual = tiktok_gates.get(theme_key)
+            actual = candidate_gate(tiktok_gates, candidate, "tiktok_theme_key")
             if not actual:
                 errors.append(f"{candidate.get('candidate_id')}:missing_tiktok_sample_gate_analysis")
                 continue
@@ -389,7 +403,7 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
     evidence_path = run_dir / "analysis" / "evidence_index.json"
     if evidence_path.exists():
         known_ids = set()
-        for pattern in ("data/raw/*.jsonl", "data/signals/*.jsonl"):
+        for pattern in ("data/raw/*.jsonl", "data/clean/*.jsonl", "data/signals/*.jsonl"):
             for source_file in run_dir.glob(pattern):
                 known_ids.update(str(row.get("source_id")) for row in load_jsonl(source_file) if row.get("source_id"))
         evidence_rows = load_json(evidence_path)

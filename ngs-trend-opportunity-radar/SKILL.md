@@ -57,6 +57,8 @@ python3 scripts/bggg_data_reddit_visible_normalize.py --inputs '<run>/work/reddi
 python3 scripts/analyze_reddit_samples.py --inputs '<run>/data/raw/reddit*.jsonl' --relevance '<run>/config/reddit_relevance.tsv' --output '<run>/analysis/reddit_sample_gates.json'
 python3 scripts/normalize_signals.py --inputs '<run>/data/signals/*.jsonl' --output '<run>/analysis/themes.json'
 python3 scripts/analyze_review_pains.py --input '<run>/data/raw/amazon_woot_<date>.jsonl' --taxonomy '<run>/config/pain_taxonomy.json' --output '<run>/analysis/amazon_pain_stats.json'
+python3 scripts/normalize_sorftime_products.py --source '<candidate_id>=<product_search_response.json>' --selected '<candidate_id>=<ASIN1>,<ASIN2>' --output '<run>/sorftime/selected_products.json'
+python3 scripts/merge_candidate_reviews.py --source '<candidate_id>=<normalized_reviews.jsonl>' --output '<run>/data/raw/amazon_woot_<date>.jsonl' --observed-market '<market>'
 python3 scripts/export_audit_csv.py --run-dir '<run>' --research-category '<research category>'
 # 按 Spreadsheets Skill 提供的 Node 运行时和 @oai/artifact-tool 环境执行：
 node scripts/build_research_workbook.mjs --run-dir '<run>' --report-label '<research category>'
@@ -82,7 +84,7 @@ TikTok 必须在用户选定、已登录的真实 Chrome 中采集；内置 `bgg
 
 面向用户只交付 3 个文件：
 
-1. `report/report.html`：主报告。快筛阶段展示完整候选池、六张实际数据图、每个方向的去留理由和 Top N 选择入口；深验阶段再增加代表 ASIN、Amazon 真实痛点、产品机会与风险。不得用深验模板伪装尚未运行的数据。
+1. `report/report.html`：主报告。快筛阶段展示完整候选池、4～6 张实际数据图、每个方向的去留理由和 Top N 选择入口；深验阶段展示 4～5 张图，并增加代表 ASIN、Amazon 真实痛点、产品机会与风险。不得用深验模板伪装尚未运行的数据。
 2. `report/research_data.xlsx`：唯一正式数据文件，含 10 个按渠道拆分的工作表，Reddit 帖子和评论独立成表。
 3. `report/report.md`：方便复制、归档或确认后发布飞书的轻量文字版。
 

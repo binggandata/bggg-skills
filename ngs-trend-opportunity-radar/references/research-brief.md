@@ -40,7 +40,7 @@ Sorftime 连接状态不是启动卡字段。首次使用时若当前环境尚�
 
 ## Agent 补齐的执行字段
 
-- `workflow_version`：固定写 `all-directions-funnel-v2`。
+- `workflow_version`：固定写 `official-category-tree-v3`。
 - `category_discovery_status`：`ready`／`sparse`／`semantic_mismatch`／`blocked`。只有 `ready` 才允许进入三源快筛。
 - `category_expansion_budget`：每个研究品类默认 5 次，表示 1 次查看第一层加 4 次展开确认分支；用户可改选数量。
 - `seed_terms`：用户确认展开的正式父分支形成的候选方向，同时保存本地语言名称、搜索词、父 Node ID、子 Node ID、市场规模和纳入理由；不得由模型补名单。

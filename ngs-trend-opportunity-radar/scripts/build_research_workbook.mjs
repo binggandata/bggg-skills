@@ -80,6 +80,11 @@ function typedValue(header, value) {
   return value;
 }
 
+function isLongNumericIdentifier(header, value) {
+  return ["source_id", "native_id", "parent_id", "asin", "asins", "node_id"].includes(header)
+    && /^\d{12,}$/.test(value);
+}
+
 function colName(index) {
   let n = index + 1, out = "";
   while (n) { n -= 1; out = String.fromCharCode(65 + (n % 26)) + out; n = Math.floor(n / 26); }
@@ -144,12 +149,13 @@ for (let sheetIndex = 0; sheetIndex < SHEETS.length; sheetIndex += 1) {
   const parsed = parseCsv(await fs.readFile(csvPath, "utf8"));
   if (!parsed.length) throw new Error(`Empty CSV source: ${csvPath}`);
   const headers = parsed[0];
-  const data = parsed.slice(1).map((row) => headers.map((header, i) => {
+  const rawData = parsed.slice(1);
+  const data = rawData.map((row) => headers.map((header, i) => {
     const value = row[i] ?? "";
     if (sheetIndex === 0 && header === "file") {
       return value.split(" / ").map((name) => CSV_TO_SHEET[name] || name).join(" / ");
     }
-    return typedValue(header, value);
+    return isLongNumericIdentifier(header, value) ? `ID:${value}` : typedValue(header, value);
   }));
   const note = sheetNote(sheetIndex, data, headers, brief);
   const sheet = workbook.worksheets.add(sheetName);
@@ -239,4 +245,9 @@ for (const range of ["'00 数据覆盖'!A1:F9", "'06 Sorftime品类'!A1:Q12", "'
   manifest.key_range_checks.push({ range, result: check.ndjson });
 }
 await fs.writeFile(path.join(qualityDir, "workbook_manifest.json"), JSON.stringify(manifest, null, 2));
+try {
+  await fs.unlink(`${outputPath}.inspect.ndjson`);
+} catch (error) {
+  if (error?.code !== "ENOENT") throw error;
+}
 console.log(JSON.stringify({ output: outputPath, sheets: manifest.sheets, formula_error_scan: scan.ndjson }));

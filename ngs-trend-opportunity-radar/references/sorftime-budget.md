@@ -61,8 +61,9 @@
 
 - `product_detail`：趋势选品阶段不需要单 ASIN 深度详情。
 - `product_reviews`：成本高，评论优先走现有 VOC Skill。
-- `category_report`：虽能返回 Top 100，但默认不需要；20 个商品足够筛代表 ASIN。
 - 多维度 `category_trend`：每个趋势维度单独计费，默认只在必要时查销量。
+
+`category_report` 不在禁止项中：它是全候选快筛前补齐市场规模的必需调用，每个候选方向一次。Top N 之后的 `product_search` 才负责筛代表 ASIN，两者用途不能混淆。
 
 ## 预算门禁
 

@@ -36,6 +36,8 @@ reddit_api = load_module("bggg_data_reddit_api", "bggg_data_reddit_api.py")
 reddit_normalize = load_module("bggg_data_reddit_normalize", "bggg_data_reddit_normalize.py")
 sys.modules["bggg_data_reddit_normalize"] = reddit_normalize
 reddit_visible_normalize = load_module("bggg_data_reddit_visible_normalize", "bggg_data_reddit_visible_normalize.py")
+merge_candidate_reviews = load_module("merge_candidate_reviews", "merge_candidate_reviews.py")
+normalize_sorftime_products = load_module("normalize_sorftime_products", "normalize_sorftime_products.py")
 export = load_module("export_audit_csv", "export_audit_csv.py")
 
 
@@ -181,6 +183,60 @@ class MainScriptsTest(unittest.TestCase):
         self.assertEqual(render.safe_url("http://169.254.169.254/latest/meta-data"), "")
         self.assertEqual(render.safe_url("http://10.0.0.1/product.png"), "")
         self.assertEqual(render.safe_url("https://example.com/product.png"), "https://example.com/product.png")
+        self.assertEqual(
+            render.safe_url("https://m.media-amazon.com/images/I/511e0 xik5FL.jpg"),
+            "https://m.media-amazon.com/images/I/511e0xik5FL.jpg",
+        )
+
+    def test_deep_report_requires_explicit_consistent_top_n(self):
+        candidate = rank.grade_candidate(self.candidate())
+        brief = {"selected_top_n": 1, "deep_validation_candidate_ids": ["theme-1"]}
+        render.validate_deep_selection(brief, [candidate])
+        with self.assertRaisesRegex(ValueError, "Top N"):
+            render.validate_deep_selection({}, [candidate])
+        with self.assertRaisesRegex(ValueError, "数量"):
+            render.validate_deep_selection(
+                {"selected_top_n": 2, "deep_validation_candidate_ids": ["theme-1"]},
+                [candidate],
+            )
+        with self.assertRaisesRegex(ValueError, "候选池"):
+            render.validate_deep_selection(
+                {"selected_top_n": 1, "deep_validation_candidate_ids": ["theme-2"]},
+                [candidate],
+            )
+
+    def test_merge_candidate_reviews_preserves_candidate_ownership(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "reviews.jsonl"
+            output = root / "merged.jsonl"
+            source.write_text(json.dumps({"source_id": "r1", "context": {"asins": ["B001"]}}) + "\n", encoding="utf-8")
+            with patch.object(sys, "argv", [
+                "merge_candidate_reviews.py", "--source", f"bathroom={source}",
+                "--output", str(output), "--observed-market", "US",
+            ]):
+                self.assertEqual(merge_candidate_reviews.main(), 0)
+            row = json.loads(output.read_text(encoding="utf-8").strip())
+            self.assertEqual(row["context"]["candidate_id"], "bathroom")
+            self.assertEqual(row["context"]["observed_market"], "US")
+
+    def test_normalize_sorftime_products_keeps_only_selected_asins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "products.json"
+            output = root / "selected.json"
+            source.write_text(json.dumps({"data": [
+                {"asin": "b001", "title": "Relevant"},
+                {"asin": "B002", "title": "Other"},
+            ]}), encoding="utf-8")
+            with patch.object(sys, "argv", [
+                "normalize_sorftime_products.py", "--source", f"bathroom={source}",
+                "--selected", "bathroom=B001", "--output", str(output),
+            ]):
+                self.assertEqual(normalize_sorftime_products.main(), 0)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual([row["asin"] for row in payload["data"]], ["B001"])
+            self.assertEqual(payload["data"][0]["candidate_id"], "bathroom")
 
     def test_visible_reddit_normalizer_accepts_search_and_legacy_comment_packages(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -218,6 +274,11 @@ class MainScriptsTest(unittest.TestCase):
             stale.touch()
             current.touch()
             self.assertEqual(export.selected_normalized_files(run, "tiktok"), [current])
+
+    def test_long_numeric_identifiers_are_kept_as_text_in_workbook_builder(self):
+        script = (ROOT / "scripts" / "build_research_workbook.mjs").read_text(encoding="utf-8")
+        self.assertIn("isLongNumericIdentifier", script)
+        self.assertIn('`ID:${value}`', script)
 
     def test_multiple_login_sessions_accept_per_source_mapping(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -429,6 +490,27 @@ class MainScriptsTest(unittest.TestCase):
             clean_file.write_text("{}\n", encoding="utf-8")
             (raw / "tiktok_old.jsonl").write_text("{}\n", encoding="utf-8")
             self.assertEqual(export.selected_normalized_files(run_dir, "tiktok"), [clean_file])
+
+    def test_validator_prefers_clean_reddit_snapshot_and_candidate_id_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            clean = run_dir / "data" / "clean"
+            raw = run_dir / "data" / "raw"
+            clean.mkdir(parents=True)
+            raw.mkdir(parents=True)
+            clean_file = clean / "reddit_screening.jsonl"
+            clean_file.write_text("{}\n", encoding="utf-8")
+            (raw / "reddit_old.jsonl").write_text("{}\n", encoding="utf-8")
+            self.assertEqual(validate.selected_reddit_files(run_dir), [clean_file])
+            gates = {"theme-1": {"quick_gate_passed": True}}
+            candidate = {"candidate_id": "theme-1", "theme": "中文方向"}
+            self.assertEqual(validate.candidate_gate(gates, candidate, "reddit_theme_key"), gates["theme-1"])
+
+    def test_validator_accepts_single_not_run_placeholder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "comments.csv"
+            path.write_text("status,reason\nnot_run,not collected\n", encoding="utf-8")
+            self.assertTrue(validate.csv_is_not_run_placeholder(path))
 
     def test_start_card_requires_market_platform_category_and_output(self):
         with tempfile.TemporaryDirectory() as tmp:

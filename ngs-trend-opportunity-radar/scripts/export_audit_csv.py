@@ -186,6 +186,15 @@ def fields_with_rows(base: list[str], rows: list[dict]) -> list[str]:
     return list(dict.fromkeys(base + [key for row in rows for key in row]))
 
 
+def call_tool(row: dict) -> str:
+    return str(row.get("tool") or "").strip().rsplit("/", 1)[-1].rsplit(".", 1)[-1]
+
+
+def call_node_id(row: dict) -> str:
+    arguments = row.get("arguments_redacted") or row.get("arguments") or {}
+    return str(arguments.get("node_id") or row.get("node_id") or "")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-dir", required=True)
@@ -271,7 +280,9 @@ def main() -> int:
     tiktok_comments = [flatten_content(row) for row in tiktok if row.get("content_type") in {"comment", "reply"}]
     write_csv(out / "02_tiktok_videos.csv", tiktok_videos, fields_with_rows(content_fields, tiktok_videos))
     if not tiktok_comments:
-        tiktok_comments = placeholder("not_run", "等待用户选择 Top N；快筛阶段只采视频，不采评论")
+        selected_top_n = (load_json(run / "00-research-brief" / "research_brief.json", {}) or {}).get("selected_top_n")
+        reason = "深验阶段未追加 TikTok 评论；本 Skill 默认以视频覆盖做快筛，评论只作补充证据" if selected_top_n else "等待用户选择 Top N；快筛阶段只采视频，不采评论"
+        tiktok_comments = placeholder("not_run", reason)
     write_csv(out / "03_tiktok_comments.csv", tiktok_comments, fields_with_rows(["status", "reason"] + content_fields, tiktok_comments))
 
     reddit = load_jsonl_files(reddit_files)
@@ -280,7 +291,9 @@ def main() -> int:
     reddit_comments = [flatten_content(row) for row in reddit if (row.get("context") or {}).get("content_type") == "comment"]
     write_csv(out / "04_reddit_posts.csv", reddit_posts, fields_with_rows(content_fields, reddit_posts))
     if not reddit_comments:
-        reddit_comments = placeholder("not_run", "等待用户选择 Top N；快筛阶段只采父帖，不采评论树")
+        selected_top_n = (load_json(run / "00-research-brief" / "research_brief.json", {}) or {}).get("selected_top_n")
+        reason = "深验阶段未追加 Reddit 评论树；本 Skill 默认以独立父帖覆盖做快筛，评论只作补充证据" if selected_top_n else "等待用户选择 Top N；快筛阶段只采父帖，不采评论树"
+        reddit_comments = placeholder("not_run", reason)
     write_csv(out / "05_reddit_comments.csv", reddit_comments, fields_with_rows(["status", "reason"] + content_fields, reddit_comments))
 
     pool = load_json(run / "analysis" / "opportunity_pool.json", {}) or {}
@@ -301,6 +314,16 @@ def main() -> int:
                 "status": sorftime.get("status"), "category_match": sorftime.get("category_match"),
                 **(sorftime.get("data") or {}), "source_file": sorftime.get("response_file"),
             })
+            row = category_rows[-1]
+            for field in ("top100_monthly_sales_volume", "top100_monthly_sales_amount", "average_price", "median_price"):
+                row[field] = last_number(row.get(field))
+            for field in (
+                "top3_product_sales_share", "top3_product_sales_volume_share", "amazon_owned_sales_share",
+                "amazon_owned_sales_volume_share", "low_reviews_sales_share", "low_reviews_sales_volume_share",
+                "return_rate",
+            ):
+                if field in row:
+                    row[field] = percent_value(row.get(field))
     else:
         for candidate in selected_candidates:
             market = candidate.get("sorftime_market") or {}
@@ -369,31 +392,39 @@ def main() -> int:
     write_csv(out / "09_evidence_index.csv", evidence, fields_with_rows(evidence_fields, evidence))
 
     calls = [row for row in load_jsonl(run / "sorftime" / "call_log.jsonl") if row.get("tool")]
-    brief = load_json(run / "00-research-brief" / "research_brief.json", {}) or {}
-    category_budget = brief.get("category_tree_budget") or {}
     if args.research_category:
-        tree_calls = int(category_budget.get("per_category") or 0)
-        report_calls = len(category_rows)
-        sorftime_total = tree_calls + report_calls
-        sorftime_detail = f"{tree_calls} category-tree calls + {report_calls} category reports; product_search not run"
+        category_node_ids = {
+            str(node_id)
+            for row in selected_candidates
+            for node_id in ([row.get("node_id")] + list(row.get("source_category_node_ids") or []))
+            if node_id
+        }
+        calls = [
+            row for row in calls
+            if str(row.get("candidate_id") or "") in allowed_ids or call_node_id(row) in category_node_ids
+        ]
+    tree_calls = sum(call_tool(row) == "category_tree" for row in calls)
+    report_calls = sum(call_tool(row) == "category_report" for row in calls)
+    product_calls = sum(call_tool(row) == "product_search" for row in calls)
+    sorftime_total = len(calls)
+    if calls:
+        sorftime_detail = f"{tree_calls} category-tree calls + {report_calls} category reports + {product_calls} product searches"
     else:
-        tree_calls = int(category_budget.get("first_level_calls_already_completed") or 0) + int(category_budget.get("branch_expansion_calls") or 0)
-        report_calls = int((load_json(run / "sorftime" / "category_reports_summary.json", {}) or {}).get("calls") or 0)
-        sorftime_total = tree_calls + report_calls
-        sorftime_detail = f"{tree_calls} category-tree calls + {report_calls} category reports; product_search not run"
-    if not sorftime_total:
-        sorftime_total = len(calls)
+        sorftime_detail = "No auditable Sorftime business calls in call_log.jsonl"
     tiktok_video_count = sum(1 for row in tiktok if row.get("content_type") == "video")
     tiktok_comment_count = sum(1 for row in tiktok if row.get("content_type") == "comment")
     reddit_post_count = sum(1 for row in reddit if (row.get("context") or {}).get("content_type") == "post")
     reddit_comment_count = sum(1 for row in reddit if (row.get("context") or {}).get("content_type") == "comment")
     trend_series = {(row.get("candidate_id"), row.get("term"), row.get("window"), row.get("observed_market")) for row in trend_rows}
+    amazon_asins = {asin for row in amazon for asin in ((row.get("context") or {}).get("asins") or [])}
+    amazon_status = "deep_validation_completed" if amazon else "not_run"
+    amazon_detail = f"{len(amazon_asins)} ASINs; Top N written-review validation completed" if amazon else "waiting for user-selected Top N"
     coverage = [
         {"source": "Google Trends", "count": len(trend_rows), "unit": "weekly points", "detail": f"{len(trend_series)} term/window/market series; 0 failures", "status": "completed", "file": "01_google_trends.csv"},
         {"source": "TikTok", "count": tiktok_video_count, "unit": "videos", "detail": f"{tiktok_comment_count} comments; screening uses logged-in Chrome", "status": "screening_completed", "file": "02_tiktok_videos.csv / 03_tiktok_comments.csv"},
         {"source": "Reddit", "count": reddit_post_count, "unit": "parent posts", "detail": f"{reddit_comment_count} comments; modes: {', '.join(sorted({str((row.get('context') or {}).get('collection_mode') or 'unknown') for row in reddit})) or 'not_run'}", "status": "screening_completed", "file": "04_reddit_posts.csv / 05_reddit_comments.csv"},
-        {"source": "Sorftime", "count": sorftime_total, "unit": "business calls", "detail": sorftime_detail, "status": "screening_completed", "file": "06_sorftime_categories.csv / 07_sorftime_products.csv"},
-        {"source": "Amazon", "count": len(amazon), "unit": "written reviews", "detail": f"{len({asin for row in amazon for asin in ((row.get('context') or {}).get('asins') or [])})} ASINs; waiting for Top N", "status": "not_run", "file": "08_amazon_reviews.csv"},
+        {"source": "Sorftime", "count": sorftime_total, "unit": "business calls", "detail": sorftime_detail, "status": "deep_validation_completed" if product_calls else "screening_completed", "file": "06_sorftime_categories.csv / 07_sorftime_products.csv"},
+        {"source": "Amazon", "count": len(amazon), "unit": "written reviews", "detail": amazon_detail, "status": amazon_status, "file": "08_amazon_reviews.csv"},
     ]
     write_csv(out / "00_data_coverage.csv", coverage, ["source", "count", "unit", "detail", "status", "file"])
     print(json.dumps({"output_dir": str(out), "research_category": args.research_category, "candidate_ids": sorted(allowed_ids), "csv_files": len(list(out.glob("*.csv"))), "amazon_reviews": len(amazon)}, ensure_ascii=False))

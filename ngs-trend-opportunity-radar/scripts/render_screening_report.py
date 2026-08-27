@@ -162,7 +162,22 @@ def build_category_context(run: Path, funnel: dict, research_category: str) -> d
     tiktok_rows = [row for row in load_jsonl(run / "data" / "clean" / "tiktok_screening.jsonl") if (row.get("context") or {}).get("candidate_id") in candidate_ids]
     reddit_rows = [row for row in load_jsonl(run / "data" / "clean" / "reddit_screening.jsonl") if (row.get("context") or {}).get("candidate_id") in candidate_ids]
     trend_rows = [row for row in load_jsonl(run / "data" / "signals" / "google_trends_product_terms.jsonl") if row.get("theme") in candidate_ids]
-    tree_calls = int((brief.get("category_tree_budget") or {}).get("per_category") or 0)
+    category_node_ids = {
+        str(node_id)
+        for row in selected_candidates
+        for node_id in ([row.get("node_id")] + list(row.get("source_category_node_ids") or []))
+        if node_id
+    }
+    calls = load_jsonl(run / "sorftime" / "call_log.jsonl")
+    calls = [
+        row for row in calls
+        if str(row.get("candidate_id") or "") in candidate_ids
+        or str(((row.get("arguments_redacted") or row.get("arguments") or {}).get("node_id") or row.get("node_id") or "")) in category_node_ids
+    ]
+    tools = [str(row.get("tool") or "").strip().rsplit("/", 1)[-1].rsplit(".", 1)[-1] for row in calls]
+    tree_calls = sum(tool == "category_tree" for tool in tools)
+    category_report_calls = sum(tool == "category_report" for tool in tools)
+    product_calls = sum(tool == "product_search" for tool in tools)
     return {
         "research_category": research_category,
         "target_market": market_display,
@@ -173,9 +188,10 @@ def build_category_context(run: Path, funnel: dict, research_category: str) -> d
         "trend_markets": sorted({str(row.get("observed_market")) for row in trend_rows if row.get("observed_market")}),
         "tiktok_videos": sum(1 for row in tiktok_rows if row.get("content_type") == "video"),
         "reddit_posts": sum(1 for row in reddit_rows if (row.get("context") or {}).get("content_type") == "post"),
-        "sorftime_calls": tree_calls + len(directions),
+        "sorftime_calls": len(calls),
         "tree_calls": tree_calls,
-        "category_report_calls": len(directions),
+        "category_report_calls": category_report_calls,
+        "product_search_calls": product_calls,
         "trend_series": trend_series(run, directions),
     }
 
