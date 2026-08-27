@@ -41,6 +41,7 @@ Sorftime 连接状态不是启动卡字段。首次使用时若当前环境尚�
 ## Agent 补齐的执行字段
 
 - `workflow_version`：固定写 `all-directions-funnel-v2`。
+- `category_discovery_status`：`ready`／`sparse`／`semantic_mismatch`／`blocked`。只有 `ready` 才允许进入三源快筛。
 - `seed_terms`：Sorftime 候选发现返回并通过语义筛选的全部有效商品方向，同时保存本地语言名称、搜索词、Node ID、市场规模和纳入理由；不得只截取销量最高的固定数量。
 - `excluded_directions`：未进入快筛的原始子类目、状态和明确排除原因。
 - `free_source_statuses`：每个候选的 Google Trends、TikTok、Reddit 状态。
@@ -60,6 +61,8 @@ Sorftime 连接状态不是启动卡字段。首次使用时若当前环境尚�
 - **Top N**：全部候选方向完成三源快筛后形成的优先级；不是 Sorftime 第一次返回时就选出的销量 Top。
 
 模型不得在 Sorftime 候选发现之前凭经验生成固定数量的候选方向。模型只负责把 Sorftime 返回的子类目做语义筛选、去重和跨平台查询词转换。
+
+每个候选方向必须反向保留至少一个 Sorftime `source_category_node_ids`。如果查询只得到 0～1 个有效子类目，先标记 `sparse`；如果不同父节点返回相同列表、或返回内容大部分与目标分支无关，标记 `semantic_mismatch`。这两种状态都不能由模型补名单，也不能继续生成 Top 排名。
 
 ### 粒度判断
 

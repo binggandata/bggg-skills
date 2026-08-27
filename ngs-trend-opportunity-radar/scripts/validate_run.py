@@ -145,6 +145,9 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
     if pool_path.exists():
         candidates = load_json(pool_path).get("candidates", [])
         if brief.get("workflow_version") == "all-directions-funnel-v2":
+            discovery_status = str(brief.get("category_discovery_status") or "")
+            if discovery_status != "ready":
+                errors.append(f"category_discovery_not_ready:{discovery_status or 'missing'}")
             seed_terms = list(brief.get("seed_terms") or [])
             if not seed_terms:
                 errors.append("all_directions_funnel_requires_seed_terms")
@@ -163,6 +166,8 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
             if declared_ids != selected_ids:
                 errors.append("deep_validation_candidate_ids_do_not_match_selected_candidates")
             for candidate in candidates:
+                if not candidate.get("source_category_node_ids"):
+                    errors.append(f"{candidate.get('candidate_id')}:missing_source_category_node_ids")
                 metrics = candidate.get("metrics") or {}
                 statuses = metrics.get("free_source_statuses") or {}
                 if set(statuses) != {"Google Trends", "TikTok", "Reddit"}:

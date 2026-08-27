@@ -52,6 +52,7 @@ class MainScriptsTest(unittest.TestCase):
         return {
             "candidate_id": "theme-1",
             "theme": "Drawer organizer",
+            "source_category_node_ids": ["3744031"],
             "platforms": ["TikTok", "Google Trends"],
             "trend_evidence": [
                 {"platform": "TikTok", "source_id": "t1", "url": "https://example.com/t1", "observed_at": "2026-08-24T00:00:00Z", "query_semantic_status": "matched"},
@@ -290,6 +291,7 @@ class MainScriptsTest(unittest.TestCase):
                 "requested_market": "US", "target_sales_platform": "Amazon",
                 "broad_category": "Home Organization", "output_location": str(run_dir),
                 "workflow_version": "all-directions-funnel-v2",
+                "category_discovery_status": "ready",
                 "selection_scope": "all_directions_screen_then_user_top_n",
                 "seed_terms": ["Drawer organizer"], "excluded_directions": [],
                 "selected_top_n": 1, "deep_validation_candidate_ids": ["theme-1"],
@@ -345,6 +347,7 @@ class MainScriptsTest(unittest.TestCase):
                 "requested_market": "US", "target_sales_platform": "Amazon",
                 "broad_category": "Home Organization", "output_location": str(run_dir),
                 "workflow_version": "all-directions-funnel-v2",
+                "category_discovery_status": "semantic_mismatch",
                 "seed_terms": ["Drawer organizer"], "excluded_directions": [],
                 "selected_top_n": 2, "deep_validation_candidate_ids": [],
             }), encoding="utf-8")
@@ -352,6 +355,7 @@ class MainScriptsTest(unittest.TestCase):
                 json.dumps({"candidates": [candidate]}), encoding="utf-8"
             )
             result = validate.validate(run_dir, 2, 5)
+            self.assertIn("category_discovery_not_ready:semantic_mismatch", result["errors"])
             self.assertIn("selected_top_n:2!=deep_candidates:1", result["errors"])
             self.assertIn("deep_validation_candidate_ids_do_not_match_selected_candidates", result["errors"])
             self.assertIn("theme-1:eliminated_without_reason", result["errors"])
