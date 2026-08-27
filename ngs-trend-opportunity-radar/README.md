@@ -26,7 +26,7 @@
 → 用户确认分支（默认展开 4 个）
 → 每个候选方向补 Sorftime 市场规模
 → 全部候选方向跑 Google Trends／TikTok／Reddit
-→ 输出完整漏斗、卡点和淘汰原因
+→ 输出快筛阶段三件套：HTML／Excel／Markdown
 → 用户选择 Top N
 → Top N 做 Sorftime 商品与 Amazon 多 ASIN 评论深验
 → A／B／C／D 机会池与产品改良方向
@@ -60,6 +60,8 @@
 ```
 
 Agent 会先回显登录环境、市场边界和类目树预算，不会先凭经验拆方向。每个研究品类默认 5 次类目树调用：1 次查看第一层、4 次展开用户确认的分支；用户可以少选、多选或不展开。展开后按确认的父分支形成候选方向，每个候选补 1 次市场报告，再运行三个免费源。快筛完成后，用户再选择 Top N 和深验预算。
+
+快筛完成时已经会生成正式三件套，而不是只返回一张表。报告明确标注“等待选择 Top N”；Excel 中尚未运行的 TikTok 评论、Reddit 评论、Sorftime 商品和 Amazon 评论工作表会写明 `not_run` 与原因。选择 Top N 后，同一套文件再升级为深验版本。
 
 ## 安装
 
@@ -155,6 +157,8 @@ report/report.md
 
 Excel 固定包含 10 个工作表：数据覆盖、Google Trends、TikTok 视频、TikTok 评论、Reddit 帖子、Reddit 评论、Sorftime 品类、Sorftime 商品、Amazon 评论、证据索引。
 
+快筛阶段和深验阶段都使用这三个文件、同一套工作表结构：前者用于选 Top N，后者增加代表 ASIN、Amazon 低星痛点和产品改良方向。
+
 原始 JSON／JSONL、内部 CSV、失败日志、截图和校验文件保留在用户选择的运行目录中，不提交到仓库。
 
 ## 安全与隐私
@@ -174,7 +178,7 @@ Excel 固定包含 10 个工作表：数据覆盖、Google Trends、TikTok 视�
 python3 -m unittest discover -s ngs-trend-opportunity-radar/tests -p 'test_*.py'
 ```
 
-当前测试数：33。
+当前测试数：37。
 
 结构校验：
 

@@ -25,6 +25,7 @@ def load_module(name: str, filename: str):
 
 rank = load_module("rank_candidates", "rank_candidates.py")
 render = load_module("render_report", "render_report.py")
+screening_render = load_module("render_screening_report", "render_screening_report.py")
 validate = load_module("validate_run", "validate_run.py")
 tiktok = load_module("bggg_data_tiktok", "bggg_data_tiktok.py")
 tiktok_plan = load_module("bggg_data_tiktok_plan", "bggg_data_tiktok_plan.py")
@@ -378,6 +379,44 @@ class MainScriptsTest(unittest.TestCase):
         report_html = render.render_html({"candidates": [selected, observed]}, data, [])
         self.assertIn("Under sink organizer", report_html)
         self.assertIn("搜索趋势平稳，暂不进入本轮 Top N", report_html)
+
+    def test_screening_checkpoint_is_explicit_and_uses_three_deliverables(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            (run_dir / "analysis").mkdir()
+            (run_dir / "data" / "clean").mkdir(parents=True)
+            (run_dir / "data" / "signals").mkdir(parents=True)
+            funnel = {
+                "stage": "all_direction_screening_complete_waiting_for_user_top_n",
+                "directions": [{
+                    "candidate_id": "home_bathroom", "name": "浴室收纳", "decision": "建议深验",
+                    "reasons": ["规模成立", "跨平台信号完整"],
+                    "sorftime": {"top100_monthly_sales_volume": 880000, "amazon_owned_share_pct": 1.0, "low_review_sales_share_pct": 2.5},
+                    "google_trends": {"us_5y_recent_year_vs_prior": 0.82},
+                    "tiktok": {"videos": 12, "authors": 10, "visible_metric_median": 5000},
+                    "reddit": {"posts": 20},
+                }],
+            }
+            (run_dir / "analysis" / "screening_funnel.json").write_text(json.dumps(funnel), encoding="utf-8")
+            html_text = screening_render.render_html(funnel, {"home": [], "pet": []}, [])
+            markdown_text = screening_render.render_markdown(funnel, [])
+            self.assertIn("等待你选择 Top N", html_text)
+            self.assertIn("Amazon 0 条评论", html_text)
+            self.assertIn('href="research_data.xlsx"', html_text)
+            self.assertEqual(html_text.count('<svg class="chart"'), 6)
+            self.assertIn("不是抓取失败", markdown_text)
+
+    def test_workbook_export_prefers_clean_screening_snapshots(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            clean = run_dir / "data" / "clean"
+            raw = run_dir / "data" / "raw"
+            clean.mkdir(parents=True)
+            raw.mkdir(parents=True)
+            clean_file = clean / "tiktok_screening.jsonl"
+            clean_file.write_text("{}\n", encoding="utf-8")
+            (raw / "tiktok_old.jsonl").write_text("{}\n", encoding="utf-8")
+            self.assertEqual(export.selected_normalized_files(run_dir, "tiktok"), [clean_file])
 
     def test_start_card_requires_market_platform_category_and_output(self):
         with tempfile.TemporaryDirectory() as tmp:

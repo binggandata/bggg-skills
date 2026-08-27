@@ -23,6 +23,13 @@ HTML 的固定章节、图表、卡片、视觉与文案规范见 [`report-templ
 - 一个多工作表 Excel：全部渠道数据入口。
 - Markdown：轻量文字版和后续飞书发布源。
 
+同一个运行在两个决策节点都可以交付这三件套：
+
+- **快筛阶段**：全部方向已经统一快筛，等待用户选择 Top N。HTML 展示候选对比和去留理由；Excel 的深验渠道表写明 `not_run` 与阶段原因。
+- **深验阶段**：用户已选择 Top N，并完成 Sorftime 商品池与 Amazon 评论验证。HTML 增加代表 ASIN、买后痛点和产品改良方向。
+
+两种阶段不得混写。快筛阶段没有 Amazon 评论是工作流尚未到达，不得写成平台失败；深验阶段若采集失败，则按实际状态披露。
+
 内部 CSV、JSON／JSONL、截图和失败日志保留在运行目录用于追溯，不在报告中制造一排下载入口。
 
 ## 报告结构
@@ -64,6 +71,8 @@ HTML 的固定章节、图表、卡片、视觉与文案规范见 [`report-templ
 ## 研究数据工作簿
 
 `report/research_data.xlsx` 固定包含 10 个工作表：数据覆盖、Google Trends、TikTok 视频、TikTok 评论、Reddit 帖子、Reddit 评论、Sorftime 品类、Sorftime 商品、Amazon 评论、证据索引。每表冻结表头、启用筛选、合理设置列宽；Reddit 表额外保留父帖 ID 与 `collection_mode`。每行尽量保留 `source_id`、来源 URL、采集时间、目标／实际市场和原始文件。CSV 可以作为内部中间文件，但 HTML／Markdown 不得给出单独的 CSV 下载入口。
+
+快筛阶段仍保留同样的 10 个工作表，方便后续在同一结构中补数据。尚未运行的工作表至少有一行 `status=not_run` 和人话原因，不能是完全空白页。
 
 ## 飞书
 

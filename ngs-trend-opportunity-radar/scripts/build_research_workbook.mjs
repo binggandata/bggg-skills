@@ -80,11 +80,18 @@ function widthFor(header) {
   if (["url", "source_url", "main_image", "source_file"].includes(header)) return 42;
   if (["source_id", "native_id", "parent_id", "candidate_id"].includes(header)) return 28;
   if (["date", "date_raw", "collected_at", "online_date"].includes(header)) return 18;
-  if (["theme", "query", "category_name", "top_category", "subcategory", "detail"].includes(header)) return 24;
+  if (header === "detail") return 38;
+  if (header === "status") return 22;
+  if (["theme", "query", "category_name", "top_category", "subcategory"].includes(header)) return 24;
   return Math.max(12, Math.min(22, header.length + 4));
 }
 
 function sheetNote(sheetIndex, data, headers, brief) {
+  const statusColumn = headers.indexOf("status");
+  const reasonColumn = headers.indexOf("reason");
+  if (data.length === 1 && statusColumn >= 0 && data[0][statusColumn] === "not_run") {
+    return reasonColumn >= 0 && data[0][reasonColumn] ? String(data[0][reasonColumn]) : "本阶段尚未运行";
+  }
   const market = brief.market_label_zh || brief.requested_market || "目标市场";
   const language = brief.language || "目标市场常用语言";
   const seedCount = (brief.seed_terms || []).length;
@@ -167,6 +174,9 @@ for (let sheetIndex = 0; sheetIndex < SHEETS.length; sheetIndex += 1) {
       verticalAlignment: "top",
       borders: { insideHorizontal: { style: "thin", color: "#E1E9E4" } },
     };
+    if (headers.includes("text_raw")) {
+      sheet.getRange(`A5:${lastCol}${lastRow}`).format.rowHeight = 72;
+    }
   }
 
   headers.forEach((header, idx) => {
@@ -213,5 +223,12 @@ const scan = await workbook.inspect({
   summary: "final formula error scan",
 });
 manifest.formula_error_scan = scan.ndjson;
+manifest.key_range_checks = [];
+for (const range of ["'00 数据覆盖'!A1:F9", "'06 Sorftime品类'!A1:Q12", "'09 证据索引'!A1:I14"]) {
+  const check = await workbook.inspect({
+    kind: "table", range, include: "values,formulas", tableMaxRows: 14, tableMaxCols: 17, maxChars: 6000,
+  });
+  manifest.key_range_checks.push({ range, result: check.ndjson });
+}
 await fs.writeFile(path.join(qualityDir, "workbook_manifest.json"), JSON.stringify(manifest, null, 2));
 console.log(JSON.stringify({ output: outputPath, sheets: manifest.sheets, formula_error_scan: scan.ndjson }));

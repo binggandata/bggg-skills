@@ -27,6 +27,7 @@ Configure Sorftime MCP on first use
 → Add one Sorftime market report per confirmed direction
 → Screen every valid direction with Google Trends, TikTok, and Reddit
 → Show the complete funnel, blockers, and exclusion reasons
+→ Deliver the screening-stage HTML / Excel / Markdown trio
 → Let the user choose Top N
 → Deep-validate Top N with Sorftime products and Amazon multi-ASIN reviews
 → Produce an A/B/C/D opportunity pool and product directions
@@ -127,6 +128,8 @@ report/report.html
 report/research_data.xlsx
 report/report.md
 ```
+
+The same three files are produced at the screening checkpoint and after deep validation. At the screening checkpoint, unrun TikTok comments, Reddit comments, Sorftime products, and Amazon reviews are explicitly marked `not_run` with a stage reason instead of appearing as unexplained blank sheets.
 
 The Excel workbook contains 10 sheets: Data Coverage, Google Trends, TikTok Videos, TikTok Comments, Reddit Posts, Reddit Comments, Sorftime Category, Sorftime Products, Amazon Reviews, and Evidence Index.
 

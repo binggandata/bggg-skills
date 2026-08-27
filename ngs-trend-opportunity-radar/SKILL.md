@@ -30,7 +30,7 @@ description: Discover and validate concrete ecommerce product opportunities from
 6. 默认把用户确认展开的父分支作为候选方向，其下一层节点用于解释范围和生成跨平台搜索词；不得把展开得到的所有孙节点静默膨胀成新的候选池。若用户希望逐个孙节点调研，先展示节点总数、额外 Sorftime 市场调用数和三个免费源的采集量，再让用户确认。每个候选保存 `source_category_node_ids`、`child_category_node_ids`、本地语言名称、跨平台搜索词和纳入理由。
 7. 在跨平台排序前，对每个候选方向分别调用一次 Sorftime `category_report` 补齐 Top-100 月销量、月销售额、价格、集中度、评论门槛和退货率等可用市场字段；字段缺失保持缺失。重复、抽象需求、品牌词、非商品节点或语义偏题项进入 `excluded_directions` 并记录原因。不同节点返回相同或明显偏题结果时标记 `semantic_mismatch`，不得进入候选池。只有 `category_discovery_status=ready` 且每个候选已有有效市场规模或明确缺失原因，才能进入三源快筛。
 8. 按 [`references/source-sample-ranges.md`](references/source-sample-ranges.md) 和 [`references/sample-gates.md`](references/sample-gates.md) 对每个候选方向统一运行三个免费源：Google Trends 看搜索需求，TikTok 看内容扩散与使用演示，Reddit 看社区讨论与真实场景。跨平台比较单位是“候选方向”，不是要求各平台存在同名类目。任何方向都不得因早期排名而跳过某一免费源。每个“找不到”必须区分 `blocked`、`empty`、`semantic_mismatch` 和真实弱信号；前两类不能写成零需求。
-9. 免费快筛完成后先交付漏斗表：每个方向的 Sorftime 市场规模、三个免费来源状态、关键数字、通过项、卡点、初步等级、保留／淘汰决定及理由。此时停止，询问用户希望多少个方向进入深验；Top N 必须由用户明确选择，不默认为 Top 1。
+9. 免费快筛完成后先生成一套“快筛阶段三件套”：`report.html`、`research_data.xlsx`、`report.md`。报告必须明确写“等待用户选择 Top N”，逐方向展示 Sorftime 市场规模、三个免费来源状态、关键数字、卡点、保留／观察／收窄决定及理由；工作簿中尚未运行的 TikTok 评论、Reddit 评论、Sorftime 商品和 Amazon 评论表必须写明 `not_run` 与阶段原因，不能留成不知用途的空表。运行 `render_screening_report.py` 后停止，询问用户希望多少个方向进入深验；Top N 必须由用户明确选择，不默认为 Top 1。
 10. 用户选择 Top N 后，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 计算最少与最坏调用数并确认预算。对所选方向复用候选阶段的类目报告，随后分别调用 `product_search` 取代表商品，语义筛选后每方向保留 3～10 个 ASIN。每方向默认最多看 3 页，达到 3～10 个即停止；第 4 页前再次确认。
 11. 为每个深验方向分别创建 Amazon 目标，使用 `bggg-data-amazon` 抓 Amazon US 书面评论；每方向至少 100 条，正常目标 300～1000 条。优先 1 个核心 ASIN 用 `full`，其余用 `basic`；分星抽样不能用于计算市场好评率。
 12. 从 Amazon 低星缺陷为每个深验方向生成可解决的产品假设；TikTok 可见评论和达到独立父帖门槛的 Reddit 讨论只作补充。每个结论保留 `source_id`、原文、URL、父级 ID 与 `collection_mode`。
@@ -59,6 +59,7 @@ python3 scripts/analyze_review_pains.py --input '<run>/data/raw/amazon_woot_<dat
 python3 scripts/export_audit_csv.py --run-dir '<run>'
 # 按 Spreadsheets Skill 提供的 Node 运行时和 @oai/artifact-tool 环境执行：
 node scripts/build_research_workbook.mjs --run-dir '<run>'
+python3 scripts/render_screening_report.py --run-dir '<run>' --out-dir '<run>/report'
 python3 scripts/rank_candidates.py --input '<run>/analysis/candidates.json' --output '<run>/analysis/opportunity_pool.json'
 python3 scripts/render_report.py --brief '<run>/00-research-brief/research_brief.json' --pool '<run>/analysis/opportunity_pool.json' --run-dir '<run>' --out-dir '<run>/report'
 python3 scripts/validate_run.py --run-dir '<run>' --soft-call-cap '<displayed default budget>' --hard-call-cap '<user-approved cap>'
@@ -80,7 +81,7 @@ TikTok 必须在用户选定、已登录的真实 Chrome 中采集；内置 `bgg
 
 面向用户只交付 3 个文件：
 
-1. `report/report.html`：主报告，按固定模板展示完整候选池、三个免费源快筛、每个淘汰理由、用户选择的 Top N、深验结果、代表 ASIN、真实痛点、产品机会、风险、证据与继续咨询入口。
+1. `report/report.html`：主报告。快筛阶段展示完整候选池、六张实际数据图、每个方向的去留理由和 Top N 选择入口；深验阶段再增加代表 ASIN、Amazon 真实痛点、产品机会与风险。不得用深验模板伪装尚未运行的数据。
 2. `report/research_data.xlsx`：唯一正式数据文件，含 10 个按渠道拆分的工作表，Reddit 帖子和评论独立成表。
 3. `report/report.md`：方便复制、归档或确认后发布飞书的轻量文字版。
 
