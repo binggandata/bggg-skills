@@ -70,7 +70,7 @@ def selected_reddit_files(run_dir: Path) -> list[Path]:
 
 
 def candidate_needs_tiktok_gate(candidate: dict) -> bool:
-    return candidate.get("grade") in {"A", "B"} or int(candidate.get("priority_order") or 999) == 1
+    return True
 
 
 def call_arguments(call: dict) -> dict:
@@ -119,8 +119,8 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
             errors.append(f"missing_or_empty:{path.relative_to(run_dir)}")
 
     brief_path = run_dir / "00-research-brief" / "research_brief.json"
-    if brief_path.exists():
-        brief = load_json(brief_path)
+    brief = load_json(brief_path) if brief_path.exists() else {}
+    if brief:
         business_fields = ["requested_market", "target_sales_platform", "broad_category", "output_location"]
         missing_business_fields = [field for field in business_fields if not brief.get(field)]
         consistency["business_card_fields"] = {field: brief.get(field) for field in business_fields}
@@ -143,7 +143,37 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
 
     pool_path = run_dir / "analysis" / "opportunity_pool.json"
     if pool_path.exists():
-        for candidate in load_json(pool_path).get("candidates", []):
+        candidates = load_json(pool_path).get("candidates", [])
+        if brief.get("workflow_version") == "all-directions-funnel-v2":
+            seed_terms = list(brief.get("seed_terms") or [])
+            if not seed_terms:
+                errors.append("all_directions_funnel_requires_seed_terms")
+            elif len(seed_terms) != len(candidates):
+                errors.append(f"seed_terms:{len(seed_terms)}!=screened_candidates:{len(candidates)}")
+            if not isinstance(brief.get("excluded_directions"), list):
+                errors.append("all_directions_funnel_requires_excluded_directions_list")
+            selected_top_n = brief.get("selected_top_n")
+            selected_candidates = [row for row in candidates if (row.get("metrics") or {}).get("selected_for_deep_validation")]
+            selected_ids = {str(row.get("candidate_id") or "") for row in selected_candidates}
+            declared_ids = {str(value) for value in (brief.get("deep_validation_candidate_ids") or [])}
+            if selected_top_n is None:
+                errors.append("top_n_requires_user_selection")
+            elif int(selected_top_n) != len(selected_candidates):
+                errors.append(f"selected_top_n:{selected_top_n}!=deep_candidates:{len(selected_candidates)}")
+            if declared_ids != selected_ids:
+                errors.append("deep_validation_candidate_ids_do_not_match_selected_candidates")
+            for candidate in candidates:
+                metrics = candidate.get("metrics") or {}
+                statuses = metrics.get("free_source_statuses") or {}
+                if set(statuses) != {"Google Trends", "TikTok", "Reddit"}:
+                    errors.append(f"{candidate.get('candidate_id')}:missing_free_source_statuses")
+                if not metrics.get("free_screen_attempted"):
+                    errors.append(f"{candidate.get('candidate_id')}:free_sources_not_all_attempted")
+                if not candidate.get("screening_decision"):
+                    errors.append(f"{candidate.get('candidate_id')}:missing_screening_decision")
+                if candidate.get("screening_decision") == "eliminated" and not candidate.get("elimination_reasons"):
+                    errors.append(f"{candidate.get('candidate_id')}:eliminated_without_reason")
+        for candidate in candidates:
             grade = candidate.get("grade")
             metrics = candidate.get("metrics") or {}
             if grade in {"A", "B"} and metrics.get("trend_platform_count", 0) < 2:
@@ -154,8 +184,8 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
                 errors.append(f"{candidate.get('candidate_id')}:grade_A_needs_validated_sorftime")
             if grade == "A" and metrics.get("amazon_pain_evidence_count", 0) < 1:
                 errors.append(f"{candidate.get('candidate_id')}:grade_A_needs_amazon_reviews")
-            if grade == "A" and not metrics.get("sample_gate_passed"):
-                errors.append(f"{candidate.get('candidate_id')}:grade_A_needs_deep_sample_gate")
+            if grade in {"A", "B"} and not metrics.get("selected_for_deep_validation"):
+                errors.append(f"{candidate.get('candidate_id')}:grade_{grade}_must_be_user_selected_for_deep_validation")
             if grade == "A" and metrics.get("amazon_pain_out_of_market_count", 0):
                 errors.append(f"{candidate.get('candidate_id')}:grade_A_contains_out_of_market_amazon_reviews")
             if grade in {"A", "B"} and metrics.get("trend_semantic_rejected_count", 0):
@@ -317,8 +347,6 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
             for field, expected in expected_fields.items():
                 if metrics.get(field) != expected:
                     errors.append(f"{candidate.get('candidate_id')}:{field}:{metrics.get(field)}!=tiktok_analysis:{expected}")
-            if candidate.get("grade") == "A" and not actual.get("deep_gate_passed"):
-                errors.append(f"{candidate.get('candidate_id')}:grade_A_needs_tiktok_deep_gate")
 
     workbook_path = run_dir / "report" / "research_data.xlsx"
     if workbook_path.exists():

@@ -81,9 +81,48 @@ def sorftime_usable(sorftime: dict) -> bool:
     return status in {"validated", "partial"} and category_match in {"exact", "relevant"}
 
 
+def free_source_statuses(candidate: dict) -> dict[str, str]:
+    raw = candidate.get("free_source_statuses") or {}
+    aliases = {
+        "Google Trends": ("Google Trends", "google_trends", "google"),
+        "TikTok": ("TikTok", "tiktok"),
+        "Reddit": ("Reddit", "reddit"),
+    }
+    result = {}
+    for platform, keys in aliases.items():
+        value = next((raw.get(key) for key in keys if raw.get(key) is not None), "not_run")
+        if isinstance(value, dict):
+            value = value.get("status")
+        result[platform] = str(value or "not_run").strip().lower()
+    return result
+
+
 def grade_candidate(candidate: dict) -> dict:
     all_trend = list(candidate.get("trend_evidence") or candidate.get("evidence") or [])
     all_pain = list(candidate.get("pain_evidence") or [])
+    statuses = free_source_statuses(candidate)
+    free_screen_attempted = all(status != "not_run" for status in statuses.values())
+    free_screen_complete = all(status in {"success", "partial", "empty"} for status in statuses.values())
+    selected_for_deep = bool(candidate.get("selected_for_deep_validation")) or str(candidate.get("validation_stage") or "").lower() == "deep_validated"
+
+    sample_gate_status = str(candidate.get("sample_gate_status") or "not_checked").lower()
+    sample_gate_detail = candidate.get("sample_gate_detail") or {}
+    tiktok_relevant_videos = int(sample_gate_detail.get("relevant_videos") or 0)
+    tiktok_accounts = int(sample_gate_detail.get("accounts") or 0)
+    tiktok_comment_parent_videos = int(sample_gate_detail.get("comment_parent_videos") or 0)
+    tiktok_comment_rows = int(sample_gate_detail.get("comment_rows") or 0)
+    tiktok_quick_gate_passed = (
+        sample_gate_status in {"quick_passed", "passed", "deep_passed"}
+        and tiktok_relevant_videos >= 10
+        and tiktok_accounts >= 5
+    )
+    sample_gate_passed = (
+        sample_gate_status in {"passed", "deep_passed"}
+        and tiktok_relevant_videos >= 20
+        and tiktok_comment_parent_videos >= 5
+        and tiktok_comment_rows >= 100
+    )
+
     reddit_gate_status = str(candidate.get("reddit_sample_gate_status") or "not_checked").lower()
     reddit_gate_detail = candidate.get("reddit_sample_gate_detail") or {}
     reddit_parent_posts = int(reddit_gate_detail.get("parent_posts") or 0)
@@ -104,13 +143,16 @@ def grade_candidate(candidate: dict) -> dict:
     trend = [
         row for row in all_trend
         if trend_row_usable(row)
+        and canonical_platform(row.get("platform")) in {"Google Trends", "TikTok", "Reddit"}
+        and (canonical_platform(row.get("platform")) != "TikTok" or tiktok_quick_gate_passed)
         and (canonical_platform(row.get("platform")) != "Reddit" or reddit_quick_gate_passed)
     ]
     pain = [
         row for row in all_pain
         if pain_row_usable(row)
         and canonical_platform(row.get("platform"))
-        and (canonical_platform(row.get("platform")) != "Reddit" or reddit_deep_gate_passed)
+        and (canonical_platform(row.get("platform")) != "TikTok" or tiktok_quick_gate_passed)
+        and (canonical_platform(row.get("platform")) != "Reddit" or reddit_quick_gate_passed)
     ]
     trend_platforms = distinct_platforms(trend)
     pain_clusters = {source_cluster(row) for row in pain if source_cluster(row)}
@@ -125,24 +167,6 @@ def grade_candidate(candidate: dict) -> dict:
     critical_missing = list(candidate.get("critical_missing") or [])
     refuted = bool(candidate.get("refuted"))
     constraints_fit = candidate.get("constraints_fit")
-    sample_gate_status = str(candidate.get("sample_gate_status") or "not_checked").lower()
-    sample_gate_detail = candidate.get("sample_gate_detail") or {}
-    tiktok_relevant_videos = int(sample_gate_detail.get("relevant_videos") or 0)
-    tiktok_accounts = int(sample_gate_detail.get("accounts") or 0)
-    tiktok_comment_parent_videos = int(sample_gate_detail.get("comment_parent_videos") or 0)
-    tiktok_comment_rows = int(sample_gate_detail.get("comment_rows") or 0)
-    tiktok_quick_gate_passed = (
-        sample_gate_status in {"quick_passed", "passed", "deep_passed"}
-        and tiktok_relevant_videos >= 10
-        and tiktok_accounts >= 5
-    )
-    sample_gate_passed = (
-        sample_gate_status in {"passed", "deep_passed"}
-        and tiktok_relevant_videos >= 20
-        and tiktok_comment_parent_videos >= 5
-        and tiktok_comment_rows >= 100
-    )
-
     reasons: list[str] = []
     missing: list[str] = list(critical_missing)
     if hard:
@@ -154,38 +178,54 @@ def grade_candidate(candidate: dict) -> dict:
 
     if hard or refuted or constraints_fit is False:
         grade = "D"
-    elif len(trend_platforms) >= 2 and len(pain_clusters) >= 2 and amazon_pain and sorftime_status == "validated" and commercial_usable and sample_gate_passed and not critical_missing:
+    elif selected_for_deep and free_screen_complete and len(trend_platforms) >= 2 and len(pain_clusters) >= 2 and amazon_pain and sorftime_status == "validated" and commercial_usable and not critical_missing:
         grade = "A"
-        reasons.append("跨平台趋势、独立痛点簇与商业验证均通过")
-    elif len(trend_platforms) >= 2 and len(pain_clusters) >= 1 and commercial_usable:
+        reasons.append("全候选快筛、独立痛点簇与 Top N 商业验证均通过")
+    elif selected_for_deep and free_screen_attempted and len(trend_platforms) >= 2 and len(pain_clusters) >= 1 and amazon_pain and commercial_usable:
         grade = "B"
-        reasons.append("方向成立，但仍有关键缺口或风险待验证")
+        reasons.append("已进入 Top N 深验，方向成立但仍有关键缺口或风险")
     else:
         grade = "C"
-        reasons.append("存在信号，但交叉、痛点或商业证据不足")
+        reasons.append("已完成免费快筛，或当前交叉与深验证据不足")
 
+    if not free_screen_attempted:
+        missing.append("三个免费数据源尚未全部运行")
+    blocked_sources = [platform for platform, status in statuses.items() if status in {"blocked", "semantic_mismatch", "not_run"}]
+    if blocked_sources:
+        missing.append("免费源缺口：" + "、".join(blocked_sources))
     if len(trend_platforms) < 2:
-        missing.append("至少两个独立趋势平台")
-    if len(pain_clusters) < 1:
-        missing.append("真实痛点证据")
-    elif len(pain_clusters) < 2:
-        missing.append("第二个独立父级痛点证据簇")
+        missing.append("至少两个独立免费源有效信号")
     rejected_trend = sum(not trend_row_usable(row) for row in all_trend)
     if rejected_trend:
         missing.append("趋势查询语义复核")
-    if not commercial_usable:
-        if category_match.lower() in {"ambiguous", "mismatch"}:
-            missing.append("Sorftime 相关类目商业验证")
-        else:
-            missing.append("Sorftime 商业验证")
-    if not amazon_pain:
-        missing.append("目标市场可用的 Amazon 买后评论验证")
-    if not sample_gate_passed:
-        missing.append("TikTok 深验样本门槛")
+    if selected_for_deep:
+        if len(pain_clusters) < 1:
+            missing.append("真实痛点证据")
+        elif len(pain_clusters) < 2:
+            missing.append("第二个独立父级痛点证据簇")
+        if not commercial_usable:
+            if category_match.lower() in {"ambiguous", "mismatch"}:
+                missing.append("Sorftime 相关类目商业验证")
+            else:
+                missing.append("Sorftime 商品验证")
+        if not amazon_pain:
+            missing.append("目标市场可用的 Amazon 买后评论验证")
+    else:
+        missing.append("仅完成免费快筛，未被用户选入 Top N")
     if any(canonical_platform(row.get("platform")) == "Reddit" for row in all_trend) and not reddit_quick_gate_passed:
         missing.append("Reddit 快筛样本门槛")
-    if any(canonical_platform(row.get("platform")) == "Reddit" for row in all_pain) and not reddit_deep_gate_passed:
-        missing.append("Reddit 独立父帖深验门槛")
+
+    screening_decision = str(candidate.get("screening_decision") or "").strip().lower()
+    elimination_reasons = [str(value) for value in (candidate.get("elimination_reasons") or []) if str(value).strip()]
+    if not screening_decision:
+        if selected_for_deep:
+            screening_decision = "deep_validation"
+        elif grade == "D" or (free_screen_complete and len(trend_platforms) < 2):
+            screening_decision = "eliminated"
+        else:
+            screening_decision = "observe"
+    if screening_decision == "eliminated" and not elimination_reasons:
+        elimination_reasons = list(reasons) + [value for value in missing if "Top N" not in value]
 
     result = dict(candidate)
     result.update(
@@ -193,6 +233,8 @@ def grade_candidate(candidate: dict) -> dict:
             "grade": grade,
             "grade_reasons": reasons,
             "missing_evidence": sorted(dict.fromkeys(missing)),
+            "screening_decision": screening_decision,
+            "elimination_reasons": sorted(dict.fromkeys(elimination_reasons)),
             "metrics": {
                 "trend_platform_count": len(trend_platforms),
                 "trend_platforms": sorted(trend_platforms),
@@ -215,6 +257,10 @@ def grade_candidate(candidate: dict) -> dict:
                 "reddit_comment_rows": reddit_comment_rows,
                 "reddit_quick_gate_passed": reddit_quick_gate_passed,
                 "reddit_deep_gate_passed": reddit_deep_gate_passed,
+                "free_source_statuses": statuses,
+                "free_screen_attempted": free_screen_attempted,
+                "free_screen_complete": free_screen_complete,
+                "selected_for_deep_validation": selected_for_deep,
                 "sorftime_status": sorftime_status,
                 "sorftime_category_match": category_match,
                 "sorftime_usable": commercial_usable,

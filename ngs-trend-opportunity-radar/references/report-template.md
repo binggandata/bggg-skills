@@ -7,16 +7,16 @@
 | 顺序 | HTML section id | 用户看到什么 | 必须回答的问题 |
 |---:|---|---|---|
 | 1 | `executive-summary` | 标题、A/B/C/D 等级、4 个关键数字 | 这次研究什么，建议继续还是暂停？ |
-| 2 | `research-scope` | 大品类 → 5～10 个子方向 → Top 1 | Top 1 是从哪个大品类筛出来的？ |
+| 2 | `research-scope` | 研究品类 → Sorftime 子类目 → 全部候选方向 → 用户选择 Top N | 候选从哪里来，深验多少个？ |
 | 3 | `decision-summary` | 为什么得到该等级、下一步三件事 | 结论依据是什么，接下来做什么？ |
 | 4 | `data-coverage` | 一句话样本覆盖与折叠的采集边界 | 实际抓到了多少，哪些没有拿到？ |
 | 5 | `trend-evidence` | Google Trends 多词折线 | 搜索兴趣是否上升或有季节性？ |
-| 6 | `social-evidence` | TikTok 视频表现 + Reddit 独立社区讨论 | 内容端是否传播，社区中是否反复出现真实场景？ |
-| 7 | `commercial-evidence` | Sorftime 商业数据、代表 ASIN 图与指标 | 类目是否有需求，代表商品是谁？ |
+| 6 | `social-evidence` | 全候选 TikTok + Reddit 快筛 | 每个方向在哪个平台通过或卡住？ |
+| 7 | `commercial-evidence` | Top N 的 Sorftime 商业数据、代表 ASIN 图与指标 | 用户选择的方向是否有规模，代表商品是谁？ |
 | 8 | `voc-pains` | Amazon 低星痛点图 | 用户买后最不满意什么？ |
 | 9 | `product-opportunity` | 产品机会卡 | 可以针对谁、在哪个场景、怎么改？ |
 | 10 | `decision-risks` | 3～5 个关键风险与反证 | 什么情况会推翻当前判断？ |
-| 11 | `candidate-pool` | 其他候选 A/B/C/D 对比表 | 为什么是这个 Top 1，而不是其他方向？ |
+| 11 | `candidate-pool` | 全候选 A/B/C/D、快筛状态与淘汰原因 | 为什么这些方向进入或没有进入 Top N？ |
 | 12 | `evidence-trace` | 完整原文、source_id、原始链接 | 结论能否回到原始证据？ |
 | 13 | `data-download` | 唯一 Excel 下载入口 | 用户如何查看全部分渠道数据？ |
 | 14 | `follow-up-consultation` | 3～5 个自然语言追问 | 报告后还能继续问什么？ |
@@ -26,15 +26,15 @@
 首屏只放决策层需要的信息：
 
 ```text
-[目标市场] [大品类]趋势选品
-Top 1：[具体商品方向]
+[目标市场] [研究品类]趋势选品
+Top N：[用户选择的深验方向]
 
 [A/B/C/D 级 + 一句话结论]
 
 搜索变化 | 类目 Top 100 月销量 | Amazon 评论数 | 代表 ASIN 数
 ```
 
-- 标题先写大品类，再写 Top 1；不能让用户误以为一开始就指定了具体产品。
+- 标题先写研究品类，再写用户选择的 Top N；不能让用户误以为一开始就指定了具体产品。
 - 等级后必须跟人话结论，例如“有机会，先做样品验证”，不能只展示字母。
 - 首屏不堆采集失败日志、方法论和长段说明。
 

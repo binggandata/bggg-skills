@@ -56,7 +56,7 @@ python3 scripts/bggg_data_tiktok_plan.py \
 python3 scripts/bggg_data_tiktok.py check
 ```
 
-Top 5 快筛时，每个商品词单独搜索并写入同一个 JSONL：
+全候选快筛时，每个有效商品方向都单独搜索并写入同一个 JSONL，不得因早期排名跳过：
 
 ```bash
 python3 scripts/bggg_data_tiktok.py search \
@@ -69,7 +69,7 @@ python3 scripts/bggg_data_tiktok.py search \
   --append
 ```
 
-Top 1～3 深验时，从已通过语义检查的视频中选择至少 5 个独立父视频，再批量抓可见评论；最终每个深验方向至少保留 100 条有效评论：
+若页面自然暴露可见评论，可以对用户选择的 Top N 保留补充评论；默认不再要求 TikTok 百条评论作为深验门槛：
 
 ```bash
 python3 scripts/bggg_data_tiktok.py comments \

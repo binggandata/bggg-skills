@@ -2,19 +2,19 @@
 
 [中文](./README.md)
 
-`ngs-trend-opportunity-radar` is a Codex Skill for cross-border ecommerce opportunity research. It expands a user-defined broad category into 5–10 concrete product directions, validates them with Google Trends, TikTok, Reddit, Sorftime, and Amazon written reviews, and produces an auditable opportunity pool with one Top-1 direction.
+`ngs-trend-opportunity-radar` is a Codex Skill for cross-border ecommerce opportunity research. It uses Sorftime to discover related subcategories and market size, screens every valid direction with Google Trends, TikTok, and Reddit, then deep-validates the user-selected Top N with Sorftime products and Amazon written reviews.
 
 It does not promise a winning product and does not replace sampling, cost, compliance, or final launch decisions.
 
 ## What it does
 
-1. Generates 5–10 product directions from a user-confirmed broad category.
-2. Compares search change and seasonality with Google Trends.
-3. Uses visible TikTok videos and comments to validate content patterns and use cases.
-4. Uses independent Reddit posts and comments to add community context and alternatives.
-5. Uses Sorftime to validate category economics and representative products.
-6. Uses Amazon US written reviews to analyze post-purchase problems.
-7. Assigns transparent A/B/C/D opportunity grades.
+1. Queries Sorftime for related subcategories and market size.
+2. Keeps every semantically relevant concrete product direction and discloses exclusions.
+3. Runs Google Trends, TikTok, and Reddit screening for every valid direction.
+4. Explains each direction's passes, blockers, keep/drop decision, and reasons.
+5. Lets the user choose Top N for deep validation.
+6. Searches representative products and analyzes Amazon US reviews for each selected direction.
+7. Assigns A/B/C/D grades to the full pool and improvement directions to deep-validated candidates.
 8. Generates a self-contained HTML report, a 10-sheet Excel workbook, and Markdown.
 
 ## Workflow
@@ -22,11 +22,11 @@ It does not promise a winning product and does not replace sampling, cost, compl
 ```text
 Configure Sorftime MCP on first use
 → Complete the research brief
-→ Generate 5–10 product directions
-→ Screen search trends with Google Trends
-→ Validate content and use cases with TikTok and Reddit
-→ Validate category and products with Sorftime
-→ Validate post-purchase problems across Amazon ASINs
+→ Discover related subcategories and market size with Sorftime
+→ Screen every valid direction with Google Trends, TikTok, and Reddit
+→ Show the complete funnel, blockers, and exclusion reasons
+→ Let the user choose Top N
+→ Deep-validate Top N with Sorftime products and Amazon multi-ASIN reviews
 → Produce an A/B/C/D opportunity pool and product directions
 ```
 
@@ -45,13 +45,13 @@ Never paste the Key into a chat, Issue, log, report, or Skill file. After config
 ```text
 [Trend Opportunity Research Brief]
 
-1. Broad category:
+1. Starting research category:
 2. Target market:
 3. Sales platform:
 4. Output location:
 ```
 
-The Agent first echoes the candidate directions, login environment, source-specific sample plan, market limitations, and Sorftime call budget. Collection and paid calls start only after explicit user confirmation.
+The Agent first echoes the login environment, market limitations, and candidate-discovery budget. After Sorftime returns subcategories, it shows every valid direction and exclusion. The user confirms the scope before free-source screening, then chooses Top N and the deep-validation budget.
 
 ## Installation
 
@@ -87,22 +87,22 @@ Use ngs-trend-opportunity-radar to research multi-platform product opportunities
 
 ## Default sample gates
 
-| Source | Top-5 screening | Top-1 validation |
+| Source | All-direction screening | User-selected Top-N validation |
 | --- | --- | --- |
-| Google Trends | All 5–10 candidates; 12 months and 53 weekly points per term | Add five-year seasonality for Top 1 |
-| TikTok | At least 10 relevant videos and 5 accounts per direction | At least 20 videos, 5 parent videos, and 100 valid comments |
-| Reddit | At least 10 independent relevant posts per direction | At least 10 posts, 5 comment parent posts, and 100 valid comments |
-| Sorftime | Do not deeply query every candidate | One category search plus one product search for Top 1 |
-| Amazon | Collect only after selecting Top 1 | 3–10 representative ASINs and at least 100 written reviews |
+| Google Trends | Every valid direction; 12 months and 53 weekly points per term | Optional five-year seasonality |
+| TikTok | At least 10 relevant videos and 5 accounts per direction | No mandatory 100-comment gate by default |
+| Reddit | At least 10 independent relevant posts per direction | No mandatory 100-comment gate by default |
+| Sorftime | Discover related subcategories and market size first | Product search for every selected direction |
+| Amazon | Not collected during screening | 3–10 representative ASINs and at least 100 written reviews per direction |
 
 Counts are coverage gates, not proof by themselves. Query semantics, parent-content independence, concentration, and market coverage remain mandatory checks.
 
 ## Sorftime call budget
 
-- Normal Top-1 flow: 2 calls.
-- If product results are semantically insufficient, pagination may reach page 3: worst case 4 calls.
-- Default hard cap: 5 calls.
-- More than 5 calls or product page 4 requires renewed user approval.
+- Candidate discovery starts with one category-search call; candidate pagination requires approval.
+- After the user chooses Top N, the minimum is `candidate discovery pages + N` calls.
+- Product search may reach page 3 per direction, so the worst case is `candidate discovery pages + 3 × N`.
+- Forecasts above five calls require explicit approval of the minimum and worst-case budget.
 - `product_detail`, `product_reviews`, and `category_report` are disabled by default.
 
 ## Reddit and authenticated old Reddit
@@ -147,7 +147,7 @@ Use the Skill in accordance with applicable law, platform terms, and your organi
 python3 -m unittest discover -s ngs-trend-opportunity-radar/tests -p 'test_*.py'
 ```
 
-Current test count: 31.
+Current test count: 33.
 
 ## Disclaimer
 

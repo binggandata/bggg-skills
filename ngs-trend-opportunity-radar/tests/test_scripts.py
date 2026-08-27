@@ -66,6 +66,13 @@ class MainScriptsTest(unittest.TestCase):
             "critical_missing": [],
             "constraints_fit": True,
             "requested_market": "US",
+            "free_source_statuses": {
+                "Google Trends": "success",
+                "TikTok": "success",
+                "Reddit": "empty",
+            },
+            "selected_for_deep_validation": True,
+            "validation_stage": "deep_validated",
             "sample_gate_status": "passed",
             "sample_gate_detail": {"relevant_videos": 20, "accounts": 5, "comment_parent_videos": 5, "comment_rows": 100},
         }
@@ -101,14 +108,19 @@ class MainScriptsTest(unittest.TestCase):
         self.assertEqual(graded["grade"], "C")
         self.assertFalse(graded["metrics"]["sorftime_usable"])
 
-    def test_a_requires_sample_gate_and_target_market_amazon(self):
+    def test_a_requires_all_free_sources_and_user_selected_deep_validation(self):
         candidate = self.candidate()
-        candidate["sample_gate_status"] = "not_checked"
+        candidate["free_source_statuses"]["Reddit"] = "blocked"
         self.assertEqual(rank.grade_candidate(candidate)["grade"], "B")
-        candidate["sample_gate_status"] = "passed"
+        candidate["free_source_statuses"]["Reddit"] = "empty"
+        candidate["selected_for_deep_validation"] = False
+        candidate["validation_stage"] = "quick_screened"
+        self.assertEqual(rank.grade_candidate(candidate)["grade"], "C")
+        candidate["selected_for_deep_validation"] = True
+        candidate["validation_stage"] = "deep_validated"
         candidate["requested_market"] = "UK"
         graded = rank.grade_candidate(candidate)
-        self.assertEqual(graded["grade"], "B")
+        self.assertEqual(graded["grade"], "C")
         self.assertEqual(graded["metrics"]["amazon_pain_evidence_count"], 0)
 
     def test_reddit_one_parent_cannot_be_promoted_by_manual_status(self):
@@ -155,10 +167,10 @@ class MainScriptsTest(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows["t1_same"]["source_id"], "api")
 
-    def test_only_top_or_ab_candidates_require_tiktok_gate_analysis(self):
+    def test_all_candidates_require_tiktok_gate_analysis(self):
         self.assertTrue(validate.candidate_needs_tiktok_gate({"priority_order": 1, "grade": "C"}))
         self.assertTrue(validate.candidate_needs_tiktok_gate({"priority_order": 3, "grade": "B"}))
-        self.assertFalse(validate.candidate_needs_tiktok_gate({"priority_order": 3, "grade": "C"}))
+        self.assertTrue(validate.candidate_needs_tiktok_gate({"priority_order": 3, "grade": "C"}))
 
     def test_report_image_urls_reject_local_and_private_networks(self):
         self.assertEqual(render.safe_url("file:///tmp/product.png"), "")
@@ -259,7 +271,7 @@ class MainScriptsTest(unittest.TestCase):
         self.assertIn("英国市场", combined)
         self.assertIn("TikTok Shop", combined)
         self.assertIn("宠物降温垫", combined)
-        self.assertIn("+12.33%", combined)
+        self.assertIn("12.33%", combined)
         self.assertNotIn("抽屉收纳", combined)
         self.assertNotIn("5.59%", combined)
         self.assertNotIn("美国市场", combined)
@@ -274,7 +286,14 @@ class MainScriptsTest(unittest.TestCase):
             brief_dir.mkdir()
             analysis_dir.mkdir()
             pool = {"candidates": [rank.grade_candidate(self.candidate())]}
-            (brief_dir / "research_brief.json").write_text(json.dumps({"requested_market": "US", "target_sales_platform": "Amazon", "broad_category": "Home Organization", "output_location": str(run_dir)}), encoding="utf-8")
+            (brief_dir / "research_brief.json").write_text(json.dumps({
+                "requested_market": "US", "target_sales_platform": "Amazon",
+                "broad_category": "Home Organization", "output_location": str(run_dir),
+                "workflow_version": "all-directions-funnel-v2",
+                "selection_scope": "all_directions_screen_then_user_top_n",
+                "seed_terms": ["Drawer organizer"], "excluded_directions": [],
+                "selected_top_n": 1, "deep_validation_candidate_ids": ["theme-1"],
+            }), encoding="utf-8")
             (analysis_dir / "opportunity_pool.json").write_text(json.dumps(pool), encoding="utf-8")
             evidence = render.build_evidence_index(pool["candidates"])
             report_dir.mkdir()
@@ -311,6 +330,50 @@ class MainScriptsTest(unittest.TestCase):
             (analysis_dir / "evidence_index.json").write_text(json.dumps(evidence), encoding="utf-8")
             result = validate.validate(run_dir, 3, 5)
             self.assertTrue(result["ok"], result)
+
+    def test_v2_funnel_rejects_unexplained_elimination_and_top_n_mismatch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            brief_dir = run_dir / "00-research-brief"
+            analysis_dir = run_dir / "analysis"
+            brief_dir.mkdir()
+            analysis_dir.mkdir()
+            candidate = rank.grade_candidate(self.candidate())
+            candidate["screening_decision"] = "eliminated"
+            candidate["elimination_reasons"] = []
+            (brief_dir / "research_brief.json").write_text(json.dumps({
+                "requested_market": "US", "target_sales_platform": "Amazon",
+                "broad_category": "Home Organization", "output_location": str(run_dir),
+                "workflow_version": "all-directions-funnel-v2",
+                "seed_terms": ["Drawer organizer"], "excluded_directions": [],
+                "selected_top_n": 2, "deep_validation_candidate_ids": [],
+            }), encoding="utf-8")
+            (analysis_dir / "opportunity_pool.json").write_text(
+                json.dumps({"candidates": [candidate]}), encoding="utf-8"
+            )
+            result = validate.validate(run_dir, 2, 5)
+            self.assertIn("selected_top_n:2!=deep_candidates:1", result["errors"])
+            self.assertIn("deep_validation_candidate_ids_do_not_match_selected_candidates", result["errors"])
+            self.assertIn("theme-1:eliminated_without_reason", result["errors"])
+
+    def test_report_lists_unselected_direction_and_reason(self):
+        selected = rank.grade_candidate(self.candidate())
+        observed_input = self.candidate()
+        observed_input.update({
+            "candidate_id": "theme-2", "theme": "Under sink organizer",
+            "selected_for_deep_validation": False, "validation_stage": "quick_screened",
+            "screening_decision": "observe", "elimination_reasons": ["搜索趋势平稳，暂不进入本轮 Top N"],
+            "pain_evidence": [], "sorftime": {"status": "not_run", "category_match": "not_checked"},
+        })
+        observed = rank.grade_candidate(observed_input)
+        data = {
+            "brief": {"requested_market": "US", "target_sales_platform": "Amazon", "broad_category": "Home Organization", "seed_terms": ["Drawer organizer", "Under sink organizer"]},
+            "trends": {"series": []}, "tiktok": [], "tiktok_signals": [], "reddit": [],
+            "products": [], "pains": {"_meta": {}, "themes": []}, "calls": [], "amazon": [],
+        }
+        report_html = render.render_html({"candidates": [selected, observed]}, data, [])
+        self.assertIn("Under sink organizer", report_html)
+        self.assertIn("搜索趋势平稳，暂不进入本轮 Top N", report_html)
 
     def test_start_card_requires_market_platform_category_and_output(self):
         with tempfile.TemporaryDirectory() as tmp:

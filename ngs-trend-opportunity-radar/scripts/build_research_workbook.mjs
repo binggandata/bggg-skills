@@ -90,13 +90,13 @@ function sheetNote(sheetIndex, data, headers, brief) {
   const seedCount = (brief.seed_terms || []).length;
   const notes = [
     "本轮各渠道的实际样本量与对应工作表",
-    `${market} ${seedCount || "多个"} 个子方向的相对搜索兴趣，共 ${data.length} 个时间点`,
+    `${market} ${seedCount || "多个"} 个候选方向的相对搜索兴趣，共 ${data.length} 个时间点`,
     `${language} 内容趋势样本；不能单独证明目标地理市场`,
     `视频下可见评论；按父视频识别集中度，共 ${data.length} 条`,
     `Reddit 独立父帖；API 受阻时可来自已登录 old Reddit，共 ${data.length} 条`,
     `Reddit 评论；按父帖识别集中度并保留 collection_mode，共 ${data.length} 条`,
-    `候选子方向的品类匹配与商业快照，共 ${data.length} 条`,
-    `Top 1 商品搜索结果；语义筛选在报告中披露，共 ${data.length} 条`,
+    `候选方向的类目匹配与商业快照，共 ${data.length} 条`,
+    `用户选择的 Top N 商品搜索结果；语义筛选按方向披露，共 ${data.length} 条`,
     "代表 ASIN 的书面评论；用于买后缺陷分析",
     `报告关键结论使用的 source_id、完整原文与 URL，共 ${data.length} 条`,
   ];

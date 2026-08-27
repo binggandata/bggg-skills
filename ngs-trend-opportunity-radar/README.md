@@ -2,19 +2,19 @@
 
 [English](./README_EN.md)
 
-`ngs-trend-opportunity-radar` 是一个面向跨境电商的 Codex Skill。它从用户给定的大品类中拆出 5～10 个商品方向，用 Google Trends、TikTok、Reddit、Sorftime 和 Amazon 书面评论交叉验证，最终输出一个可追溯的产品机会池和 Top 1 方向。
+`ngs-trend-opportunity-radar` 是一个面向跨境电商的 Codex Skill。它先用 Sorftime 从研究品类中取得相关子类目和市场规模，再让 Google Trends、TikTok、Reddit 覆盖全部候选方向。用户查看漏斗后选择 Top N，Skill 再用 Sorftime 商品与 Amazon 书面评论深验。
 
 它不是爆款承诺，也不替代打样、成本、合规和最终上架判断。
 
 ## 能做什么
 
-1. 从用户确认的大品类生成 5～10 个具体商品子方向。
-2. 用 Google Trends 比较目标市场的搜索变化和季节性。
-3. 用 TikTok 可见视频与评论验证内容趋势和使用场景。
-4. 用 Reddit 独立帖子与评论补充社区场景和替代方案。
-5. 用 Sorftime 验证类目商业快照与代表商品。
-6. 用 Amazon US 书面评论分析真实买后问题。
-7. 按透明规则输出 A／B／C／D 机会等级。
+1. 用 Sorftime 查询研究品类下的相关子类目和市场规模。
+2. 保留全部语义相关、可对应具体商品的方向，并说明排除项。
+3. 对全部有效方向运行 Google Trends、TikTok 和 Reddit 快筛。
+4. 逐方向说明通过项、卡点、保留／淘汰决定和原因。
+5. 由用户选择进入深验的 Top N，不替用户默选数量。
+6. 对 Top N 搜索代表商品，并用 Amazon US 书面评论分析买后问题。
+7. 输出全候选 A／B／C／D 等级与深验方向的产品改良建议。
 8. 生成自包含 HTML 报告、10 工作表 Excel 和 Markdown。
 
 ## 固定工作流
@@ -22,11 +22,12 @@
 ```text
 首次配置 Sorftime MCP
 → 填写趋势选品启动卡
-→ 拆出 5～10 个商品子方向
-→ Google Trends 搜索趋势快筛
-→ TikTok 与 Reddit 内容／场景验证
-→ Sorftime 类目与代表商品验证
-→ Amazon 多 ASIN 书面评论验证
+→ Sorftime 查询相关子类目与市场规模
+→ 子类目去重、统一粒度，形成候选方向
+→ 全部候选方向跑 Google Trends／TikTok／Reddit
+→ 输出完整漏斗、卡点和淘汰原因
+→ 用户选择 Top N
+→ Top N 做 Sorftime 商品与 Amazon 多 ASIN 评论深验
 → A／B／C／D 机会池与产品改良方向
 ```
 
@@ -57,7 +58,7 @@
 家居收纳｜美国｜Amazon｜桌面/趋势选品报告
 ```
 
-Agent 会先回显候选方向、登录环境、各平台样本范围、市场覆盖边界和 Sorftime 调用预算。用户确认“开始”后，才会采集数据或调用付费接口。
+Agent 会先回显登录环境、市场边界和候选发现预算，不会先凭经验拆方向。Sorftime 返回子类目后，Agent 只做语义筛选、去重和跨平台查询词转换，展示全部候选方向与排除项；用户确认范围后才运行三个免费源。快筛完成后，用户再选择 Top N 和深验预算。
 
 ## 安装
 
@@ -102,7 +103,7 @@ python3 -m pip install -r ngs-trend-opportunity-radar/scripts/requirements.txt
 
 ```text
 调用 ngs-trend-opportunity-radar。
-研究品类：宠物用品
+研究品类：宠物清洁
 目标市场：美国
 平台：Amazon
 输出位置：桌面/宠物选品报告
@@ -110,22 +111,22 @@ python3 -m pip install -r ngs-trend-opportunity-radar/scripts/requirements.txt
 
 ## 默认样本门槛
 
-| 平台 | Top 5 快筛 | Top 1 深验 |
+| 平台 | 全候选快筛 | 用户所选 Top N 深验 |
 | --- | --- | --- |
-| Google Trends | 全部 5～10 个候选；每词近 12 个月、53 周 | Top 1 补看近 5 年季节性 |
-| TikTok | 每方向至少 10 个相关视频、5 个账号 | 至少 20 个视频、5 个父视频、100 条有效评论 |
-| Reddit | 每方向至少 10 篇独立相关帖 | 至少 10 篇帖子、5 个评论父帖、100 条有效评论 |
-| Sorftime | 不对所有候选付费深挖 | Top 1 默认 1 次类目搜索 + 1 次商品搜索 |
-| Amazon | Top 1 后才采集 | 3～10 个代表 ASIN；至少 100 条书面评论 |
+| Google Trends | 全部有效方向；每词近 12 个月、53 周 | 可补看近 5 年季节性 |
+| TikTok | 每方向至少 10 个相关视频、5 个账号 | 默认不追加百评门槛 |
+| Reddit | 每方向至少 10 篇独立相关帖 | 默认不追加百评门槛 |
+| Sorftime | 先查研究品类相关子类目与市场规模 | 每个深验方向搜索代表商品 |
+| Amazon | 快筛阶段不采集 | 每方向 3～10 个代表 ASIN；至少 100 条书面评论 |
 
 数量只是覆盖门槛。查询语义、父内容独立性、最大父内容占比和目标市场边界仍需单独检查。
 
 ## Sorftime 调用预算
 
-- 正常 Top 1：2 次。
-- 商品语义不足时，最多自动看到第 3 页：最坏 4 次。
-- 默认硬上限：5 次。
-- 超过 5 次或准备进入商品第 4 页：必须再次征得用户同意。
+- 候选发现从 1 次类目搜索开始；候选分页前先确认。
+- 用户选择 Top N 后，最少调用数为“候选发现页数 + N”。
+- 每个方向商品搜索最多自动看到第 3 页；最坏为“候选发现页数 + 3 × N”。
+- 预计超过 5 次时，必须展示最少／最坏预算并征得用户同意。
 - 默认不调用 `product_detail`、`product_reviews` 或 `category_report`。
 
 ## Reddit 与登录态
@@ -172,7 +173,7 @@ Excel 固定包含 10 个工作表：数据覆盖、Google Trends、TikTok 视�
 python3 -m unittest discover -s ngs-trend-opportunity-radar/tests -p 'test_*.py'
 ```
 
-当前测试数：31。
+当前测试数：33。
 
 结构校验：
 

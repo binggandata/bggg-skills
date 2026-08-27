@@ -11,8 +11,8 @@
 | Google Trends | 搜索兴趣是否上升、季节性与拐点 | 用户选定的登录浏览器页面；或用户导出。记录 geo、窗口和查询词 | 相对指数等于销量 |
 | TikTok | 内容供给、近期传播与反复出现的场景 | 用户选定登录环境 + 内置 `bggg-data-tiktok`，或按其浏览器回退流程采可见 DOM | 热门视频等于购买需求 |
 | Reddit | 独立社区是否持续讨论同一使用场景、替代方案与痛点 | 内置 `bggg-data-reddit`：OAuth／公共 JSON API → 已登录 `old.reddit.com` 同源 JSON → old Reddit 可见 DOM | 单个帖子或一个 subreddit 等于北美普遍需求 |
-| Sorftime | 类目商业快照和 Top 商品池 | 1 次类目搜索 + Top 1 的 1 次商品搜索 | 搜索结果等于完整市场 |
-| Amazon | 代表 ASIN 的真实买后缺陷 | `bggg-data-amazon` 书面评论 | 分星样本等于真实好评率 |
+| Sorftime | 研究品类相关子类目、市场规模和 Top N 商品池 | 先查候选全集，再按用户选择的 Top N 搜索商品 | 搜索结果等于完整市场 |
+| Amazon | Top N 代表 ASIN 的真实买后缺陷 | `bggg-data-amazon` 书面评论 | 分星样本等于真实好评率 |
 
 趋势主题进入痛点验证前，优先要求至少两个独立来源同向；同一平台的多个查询不是多个独立平台。
 
@@ -31,7 +31,7 @@
 
 - TikTok 评论：即时追问、抱怨、购买意图；使用内置 `bggg-data-tiktok` 的 `scripts/bggg_data_tiktok.py comments`，只抓选定父视频的可见评论。
 - Reddit 评论：使用内置 `bggg-data-reddit`；只有达到独立父帖门槛的 JSON／old Reddit DOM 样本才能进入痛点验证，且按父帖计算集中度。
-- Amazon 评论：Top 1 品类进入具体产品阶段后的必做买后验证；使用 `bggg-data-amazon`。该 Skill 仅覆盖 Amazon US 书面评论。
+- Amazon 评论：用户选择的 Top N 进入具体产品阶段后的必做买后验证；每个方向独立保存目标与样本。该 Skill 仅覆盖 Amazon US 书面评论。
 - 非美 Amazon 市场没有可靠评论入口时，允许用户提供 CSV／XLSX／JSONL，或把 Amazon 评论证据标为缺失；不得静默用美国评论代替目标市场。
 
 ## 市场支持规则

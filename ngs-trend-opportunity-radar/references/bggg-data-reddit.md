@@ -37,10 +37,10 @@ OAuth 可从本地环境读取 `REDDIT_ACCESS_TOKEN`，或 `REDDIT_CLIENT_ID`＋
 
 ## 进入评级
 
-- Top 5 快筛：每方向至少 10 个语义相关独立帖子；同一转帖链只算一个父级。
-- Top 1～3 深验：至少 10 个语义相关独立帖子，评论覆盖至少 5 个独立父帖、100 条有效评论；最大父帖占比超过 40% 时标记集中。
+- 全候选快筛：每个有效方向至少 10 个语义相关独立帖子；同一转帖链只算一个父级，不得因早期排名跳过方向。
+- 用户选择 Top N 后，已有评论可作补充证据；默认不再要求 Reddit 百条评论作为深验门槛。
 - Reddit 只说明社区讨论与语言／subreddit 语境，不能单独证明目标地理市场。
-- 未达到快筛门槛时，Reddit 不计入独立趋势平台；未达到深验门槛时，Reddit 评论不计入 A 级痛点簇。
+- 未达到快筛门槛时，Reddit 不计入独立趋势平台；`blocked`、`empty` 与语义弱信号必须分别披露。
 
 `config/reddit_relevance.tsv` 至少包含 `native_id`、`theme`、`query_semantic_status`。只有 `matched`／`relevant` 父帖进入统计。`analysis/reddit_sample_gates.json` 分开记录相关帖子数 `parent_posts` 与实际评论覆盖父帖数 `comment_parent_posts`；前者控制快筛，后者控制深验。候选中的 `reddit_sample_gate_status` 和 `reddit_sample_gate_detail` 必须与它一致，校验器会复核，不能手填绕过。
 

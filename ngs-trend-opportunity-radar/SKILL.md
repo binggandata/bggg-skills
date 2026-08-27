@@ -1,6 +1,6 @@
 ---
 name: ngs-trend-opportunity-radar
-description: Discover and validate concrete ecommerce product opportunities from a user-defined broad category using Google Trends, TikTok, Reddit, Sorftime category and Top-ASIN data, and Amazon written reviews. Use for multi-platform trend product discovery, rising product themes, community pain validation, evidence-backed product ideas, or an A/B/C/D opportunity pool with one auditable multi-sheet Excel workbook and visual HTML output. Does not procure, list, or operate stores.
+description: Discover and validate concrete ecommerce product opportunities from a user-defined starting research category using Google Trends, TikTok, Reddit, Sorftime category and Top-ASIN data, and Amazon written reviews. Use for multi-platform trend product discovery, rising product themes, community pain validation, evidence-backed product ideas, or an A/B/C/D opportunity pool with one auditable multi-sheet Excel workbook and visual HTML output. Does not procure, list, or operate stores.
 ---
 
 # NGS Trend Opportunity Radar
@@ -24,15 +24,17 @@ description: Discover and validate concrete ecommerce product opportunities from
 
 1. 读取 [`references/research-brief.md`](references/research-brief.md)，首次使用时先检查 Sorftime MCP，再展示并整理《趋势选品启动卡》。若 Sorftime 尚未连接，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 给出 `https://open.sorftime.com/mcp`，说明注册权益并提示用户在 MCP 设置中填写 Key；不接收明文 Key。复用用户已给信息，只追问研究品类、目标市场、平台和输出位置中的缺失项；不要追加售价、毛利、排除项或筛选范围。输出位置是交付设置，不是选品条件。
 2. 业务卡齐全后，按 [`references/login-session-routing.md`](references/login-session-routing.md) 只读检查可用登录环境。只有一个时回显；多个时先让用户选择统一环境或按 Google Trends／TikTok／Reddit 浏览器回退分配，选择前不采集。
-3. 回显已填写的业务卡、登录态选择，并按 [`references/source-sample-ranges.md`](references/source-sample-ranges.md) 展示每个平台的固定采集范围、Reddit API→old Reddit 回退路线、实际覆盖风险和 Sorftime 预算；用户确认后才开始外部采集或付费调用。
-4. 从用户的大品类生成 5～10 个互不重复的商品子方向。Google Trends 必做：按目标国家和当地常用语言比较这些商品词，形成候选排序。再按 [`references/source-routing.md`](references/source-routing.md) 用 TikTok 与 Reddit 补证并检查查询语义。TikTok 使用内置 `bggg-data-tiktok`，Reddit 使用内置 `bggg-data-reddit`；分别读取 [`references/bggg-data-tiktok.md`](references/bggg-data-tiktok.md) 与 [`references/bggg-data-reddit.md`](references/bggg-data-reddit.md)，不要求用户另行安装。
-5. 按 [`references/source-sample-ranges.md`](references/source-sample-ranges.md) 和 [`references/sample-gates.md`](references/sample-gates.md) 分两级采样。Top 5 做快速筛选；Top 1～3 达到独立父内容和有效文本门槛后才能进入深挖。评论型平台的最终 Top 1 均不得少于 100 条有效评论。
-6. 默认只深挖 Top 1：Sorftime 先用 `category_search_from_product_name` 验证品类，再用 `product_search` 取第一页 20 个商品。人工检查语义；若不足 3 个字段完整的相关代表 ASIN，按 [`references/degradation-and-pagination.md`](references/degradation-and-pagination.md) 自动翻页，默认最多看 3 页（含第一页），拿到 3～10 个后提前停止。第 3 页仍不足时先汇报每页新增有效数，再问用户是否继续以及是否调整最大翻页上限。不逐个调用 `product_detail`。
-7. 为代表 ASIN 创建 `config/amazon_targets.tsv`，用 `bggg-data-amazon` 抓 Amazon US 书面评论。优先 1 个核心 ASIN 用 `full`，其余用 `basic`；分星抽样不能用来计算市场好评率。
-8. 从 Amazon 低星缺陷、TikTok 评论和达到独立父帖门槛的 Reddit 讨论生成可解决的产品假设；每个结论都保留 `source_id`、原文、URL、父级 ID 与 `collection_mode`。
-9. 按 [`references/opportunity-grading.md`](references/opportunity-grading.md) 分为 A／B／C／D；缺少 Amazon 买后验证的候选不能成为最终 A 级产品机会。
-10. 运行确定性脚本统计，先生成按渠道区分的内部 CSV，再合并为一个 `research_data.xlsx`；同时生成 Markdown 与可视化 HTML。代表 ASIN 同时展示产品图和关键指标，长证据原文可展开完整查看。数据文件契约见 [`references/report-contract.md`](references/report-contract.md)，主报告固定模板见 [`references/report-template.md`](references/report-template.md)，交付前执行 [`references/quality-checklist.md`](references/quality-checklist.md)。
-11. 报告交付后主动给出 3～5 个可继续咨询的方向，例如 ASIN 对比、完整差评证据、产品打样规格或换市场重跑；等待用户选择，不自动扩展研究或发布。
+3. 回显业务卡、登录态选择、三个免费源的固定快筛范围，以及 Sorftime 的候选发现调用预算；用户确认后才开始外部采集或付费调用。
+4. 先判断研究品类能否直接查询：`家居收纳`、`宠物清洁`这类业务品类可直接进入候选发现；`Home & Kitchen` 这类平台一级大类需先收窄，已具体到单一商品或 SKU 则跳过候选漏斗，改走单品验证。不得由模型先凭经验拆出固定数量的方向。随后调用一次 Sorftime `category_search_from_product_name`，用用户的研究品类和目标站点取得相关子类目、Node ID 与市场规模。默认读取第一页全部返回行；若服务端还有分页，先汇报额外调用次数，由用户决定是否扩展候选池。
+5. 从 Sorftime 返回中保留全部语义相关、可对应具体商品的子类目，再经过去重和粒度统一形成“候选方向”；不预设候选数量，也不把模型自行联想的产品混入候选池。每个候选方向必须可搜索、互不重复，并保存来源子类目、本地语言名称、跨平台搜索词、Node ID、纳入理由和市场规模。重复、抽象需求、品牌词、非商品节点或语义偏题项进入 `excluded_directions`，记录排除原因。若用户给了明确产品线索，只能作为 Sorftime 查询或语义核对线索；候选表回显后由用户确认研究范围。
+6. 按 [`references/source-sample-ranges.md`](references/source-sample-ranges.md) 和 [`references/sample-gates.md`](references/sample-gates.md) 对每个候选方向统一运行三个免费源：Google Trends 看搜索需求，TikTok 看内容扩散与使用演示，Reddit 看社区讨论与真实场景。跨平台比较单位是“候选方向”，不是要求各平台存在同名类目。任何方向都不得因早期排名而跳过某一免费源。每个“找不到”必须区分 `blocked`、`empty`、`semantic_mismatch` 和真实弱信号；前两类不能写成零需求。
+7. 免费快筛完成后先交付漏斗表：每个方向的三个来源状态、关键数字、通过项、卡点、初步等级、保留／淘汰决定及理由。此时停止，询问用户希望多少个方向进入深验；Top N 必须由用户明确选择，不默认为 Top 1。
+8. 用户选择 Top N 后，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 计算最少与最坏调用数并确认预算。对所选方向复用候选发现阶段的类目规模；只有映射缺失或偏题时才追加类目校正。随后分别调用 `product_search` 取代表商品，语义筛选后每方向保留 3～10 个 ASIN。每方向默认最多看 3 页，达到 3～10 个即停止；第 4 页前再次确认。
+9. 为每个深验方向分别创建 Amazon 目标，使用 `bggg-data-amazon` 抓 Amazon US 书面评论；每方向至少 100 条，正常目标 300～1000 条。优先 1 个核心 ASIN 用 `full`，其余用 `basic`；分星抽样不能用于计算市场好评率。
+10. 从 Amazon 低星缺陷为每个深验方向生成可解决的产品假设；TikTok 可见评论和达到独立父帖门槛的 Reddit 讨论只作补充。每个结论保留 `source_id`、原文、URL、父级 ID 与 `collection_mode`。
+11. 按 [`references/opportunity-grading.md`](references/opportunity-grading.md) 对全部方向给出 A／B／C／D；未进入深验的方向必须标注“仅完成免费快筛”，不能把未调用 Sorftime／Amazon 写成验证失败。报告必须逐项解释为什么其他方向未进入 Top N。
+12. 运行确定性脚本统计，先生成按渠道区分的内部 CSV，再合并为一个 `research_data.xlsx`；同时生成 Markdown 与可视化 HTML。数据文件契约见 [`references/report-contract.md`](references/report-contract.md)，主报告模板见 [`references/report-template.md`](references/report-template.md)，交付前执行 [`references/quality-checklist.md`](references/quality-checklist.md)。
+13. 报告交付后主动给出 3～5 个可继续咨询的方向，例如深验更多候选、ASIN 对比、完整差评证据、产品打样规格或换市场重跑；等待用户选择，不自动扩大 Top N 或发布。
 
 ## 脚本
 
@@ -64,17 +66,18 @@ python3 scripts/validate_run.py --run-dir '<run>' --soft-call-cap 2 --hard-call-
 
 ## 默认调用额度
 
-- Top 1 正常下钻共 2 次：一次品类搜索、一次商品搜索；若第一页语义相关代表商品不足，最多自动翻到第 3 页，最坏 4 次调用。
-- 若用户要求比较 Top 3 品类，可先各做一次品类搜索，再只对胜出的 Top 1 追加一次商品搜索，总计 4 次。
-- 默认最大翻页上限 3 页（包含第一页）；第 3 页后继续或修改上限都必须先获得用户确认。
-- 硬上限 5 次；超过 5 次必须先获得用户确认。
+- 候选发现固定从 1 次类目搜索开始；若候选结果有分页，追加前先征得用户同意。
+- 用户选择 Top N 后，每个深验方向至少 1 次商品搜索，因此最少调用数为 `候选发现页数 + N`。
+- 每个方向商品搜索最多自动看到第 3 页，因此不含类目校正时，最坏调用数为 `候选发现页数 + 3 × N`。
+- Top N 选择导致预计总调用超过 5 次时，必须先展示最少／最坏预算并获得确认；确认后的预算是本次任务上限，不得静默增加。
+- 商品搜索准备进入任一方向第 4 页，或需要新增类目校正时，必须再次说明原因和边际收益。
 - 默认不调用 `product_detail`、Sorftime `product_reviews` 或 `category_report`；Amazon 评论走 `bggg-data-amazon`。
 
 ## 最终交付
 
 面向用户只交付 3 个文件：
 
-1. `report/report.html`：主报告，按固定模板展示研究范围、结论、4～5 张图、代表 ASIN 产品卡、真实痛点、产品机会、风险、证据与继续咨询入口。
+1. `report/report.html`：主报告，按固定模板展示完整候选池、三个免费源快筛、每个淘汰理由、用户选择的 Top N、深验结果、代表 ASIN、真实痛点、产品机会、风险、证据与继续咨询入口。
 2. `report/research_data.xlsx`：唯一正式数据文件，含 10 个按渠道拆分的工作表，Reddit 帖子和评论独立成表。
 3. `report/report.md`：方便复制、归档或确认后发布飞书的轻量文字版。
 
