@@ -11,8 +11,8 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 
 
-DEFAULT_TOOLS = {"category_search_from_product_name", "category_trend", "product_search"}
-DEFAULT_BLOCKED = {"product_detail", "product_reviews", "category_report"}
+DEFAULT_TOOLS = {"category_name_search", "category_tree", "category_report", "category_trend", "product_search"}
+DEFAULT_BLOCKED = {"product_detail", "product_reviews"}
 WORKBOOK_SHEETS = [
     ("00_data_coverage.csv", "00 数据覆盖"),
     ("01_google_trends.csv", "01 Google Trends"),
@@ -144,7 +144,7 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
     pool_path = run_dir / "analysis" / "opportunity_pool.json"
     if pool_path.exists():
         candidates = load_json(pool_path).get("candidates", [])
-        if brief.get("workflow_version") == "all-directions-funnel-v2":
+        if brief.get("workflow_version") in {"all-directions-funnel-v2", "official-category-tree-v3"}:
             discovery_status = str(brief.get("category_discovery_status") or "")
             if discovery_status != "ready":
                 errors.append(f"category_discovery_not_ready:{discovery_status or 'missing'}")
@@ -168,6 +168,8 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
             for candidate in candidates:
                 if not candidate.get("source_category_node_ids"):
                     errors.append(f"{candidate.get('candidate_id')}:missing_source_category_node_ids")
+                if brief.get("workflow_version") == "official-category-tree-v3" and not candidate.get("child_category_node_ids"):
+                    errors.append(f"{candidate.get('candidate_id')}:missing_child_category_node_ids")
                 metrics = candidate.get("metrics") or {}
                 statuses = metrics.get("free_source_statuses") or {}
                 if set(statuses) != {"Google Trends", "TikTok", "Reddit"}:
@@ -198,7 +200,8 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
 
     calls = load_jsonl(run_dir / "sorftime" / "call_log.jsonl")
     if len(calls) > hard_cap:
-        approved_caps = [int(row.get("approved_call_cap") or 0) for row in calls if row.get("user_approved")]
+        approved_caps = [int(brief.get("approved_sorftime_call_cap") or 0)]
+        approved_caps.extend(int(row.get("approved_call_cap") or 0) for row in calls if row.get("user_approved"))
         approved_cap = max(approved_caps, default=hard_cap)
         if len(calls) > approved_cap:
             errors.append(f"sorftime_calls:{len(calls)}>approved_cap:{approved_cap}")
@@ -234,6 +237,17 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
         serialized = json.dumps(call, ensure_ascii=False).lower()
         if any(marker in serialized for marker in ("mcp_key", "account-sk", "cookie", "access_token")):
             errors.append(f"call_{idx}:possible_secret_in_log")
+
+    if brief.get("workflow_version") == "official-category-tree-v3" and pool_path.exists():
+        candidates = load_json(pool_path).get("candidates", [])
+        report_node_ids = {
+            str(call_arguments(call).get("node_id") or call.get("node_id") or "")
+            for call in calls if tool_name(call) == "category_report" and call.get("success", True)
+        }
+        for candidate in candidates:
+            source_nodes = {str(value) for value in candidate.get("source_category_node_ids") or []}
+            if source_nodes and not source_nodes.intersection(report_node_ids):
+                errors.append(f"{candidate.get('candidate_id')}:missing_category_report")
 
     html_path = run_dir / "report" / "report.html"
     if html_path.exists():

@@ -2,13 +2,13 @@
 
 [English](./README_EN.md)
 
-`ngs-trend-opportunity-radar` 是一个面向跨境电商的 Codex Skill。它先用 Sorftime 从研究品类中取得相关子类目和市场规模，再让 Google Trends、TikTok、Reddit 覆盖全部候选方向。用户查看漏斗后选择 Top N，Skill 再用 Sorftime 商品与 Amazon 书面评论深验。
+`ngs-trend-opportunity-radar` 是一个面向跨境电商的 Codex Skill。它先用 Sorftime 官方类目树定位研究品类，让用户确认要展开的分支，再为每个候选方向补市场规模，并让 Google Trends、TikTok、Reddit 覆盖全部候选。用户查看漏斗后选择 Top N，Skill 再用 Sorftime 商品与 Amazon 书面评论深验。
 
 它不是爆款承诺，也不替代打样、成本、合规和最终上架判断。
 
 ## 能做什么
 
-1. 用 Sorftime 查询研究品类下的相关子类目和市场规模。
+1. 用 Sorftime 官方类目树展示研究品类下的正式子类目，并让用户选择展开分支。
 2. 保留全部语义相关、可对应具体商品的方向，并说明排除项。
 3. 对全部有效方向运行 Google Trends、TikTok 和 Reddit 快筛。
 4. 逐方向说明通过项、卡点、保留／淘汰决定和原因。
@@ -22,8 +22,9 @@
 ```text
 首次配置 Sorftime MCP
 → 填写趋势选品启动卡
-→ Sorftime 查询相关子类目与市场规模
-→ 子类目去重、统一粒度，形成候选方向
+→ Sorftime 官方类目树展示第一层
+→ 用户确认分支（默认展开 4 个）
+→ 每个候选方向补 Sorftime 市场规模
 → 全部候选方向跑 Google Trends／TikTok／Reddit
 → 输出完整漏斗、卡点和淘汰原因
 → 用户选择 Top N
@@ -58,7 +59,7 @@
 家居收纳｜美国｜Amazon｜桌面/趋势选品报告
 ```
 
-Agent 会先回显登录环境、市场边界和候选发现预算，不会先凭经验拆方向。Sorftime 返回子类目后，Agent 只做语义筛选、去重和跨平台查询词转换，展示全部候选方向与排除项；用户确认范围后才运行三个免费源。快筛完成后，用户再选择 Top N 和深验预算。
+Agent 会先回显登录环境、市场边界和类目树预算，不会先凭经验拆方向。每个研究品类默认 5 次类目树调用：1 次查看第一层、4 次展开用户确认的分支；用户可以少选、多选或不展开。展开后按确认的父分支形成候选方向，每个候选补 1 次市场报告，再运行三个免费源。快筛完成后，用户再选择 Top N 和深验预算。
 
 ## 安装
 
@@ -116,18 +117,18 @@ python3 -m pip install -r ngs-trend-opportunity-radar/scripts/requirements.txt
 | Google Trends | 全部有效方向；每词近 12 个月、53 周 | 可补看近 5 年季节性 |
 | TikTok | 每方向至少 10 个相关视频、5 个账号 | 默认不追加百评门槛 |
 | Reddit | 每方向至少 10 篇独立相关帖 | 默认不追加百评门槛 |
-| Sorftime | 先查研究品类相关子类目与市场规模 | 每个深验方向搜索代表商品 |
+| Sorftime | 官方类目树＋每个候选 1 次市场报告 | 每个深验方向搜索代表商品 |
 | Amazon | 快筛阶段不采集 | 每方向 3～10 个代表 ASIN；至少 100 条书面评论 |
 
 数量只是覆盖门槛。查询语义、父内容独立性、最大父内容占比和目标市场边界仍需单独检查。
 
 ## Sorftime 调用预算
 
-- 候选发现从 1 次类目搜索开始；候选分页前先确认。
-- 用户选择 Top N 后，最少调用数为“候选发现页数 + N”。
-- 每个方向商品搜索最多自动看到第 3 页；最坏为“候选发现页数 + 3 × N”。
+- 每个研究品类默认 5 次类目树调用：1 次看第一层、4 次展开确认分支；用户可改选。
+- 全候选市场规模每方向 1 次，与类目树预算分开计算。
+- 用户选择 Top N 后，商品池最少新增 N 次，最多新增 3 × N 次。
 - 预计超过 5 次时，必须展示最少／最坏预算并征得用户同意。
-- 默认不调用 `product_detail`、`product_reviews` 或 `category_report`。
+- 默认不调用 `product_detail` 或 `product_reviews`；`category_report` 用于全部候选的市场规模。
 
 ## Reddit 与登录态
 

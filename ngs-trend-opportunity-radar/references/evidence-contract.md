@@ -41,11 +41,11 @@ Reddit 采集器把 API 与 old Reddit 可见数据写入 `data/raw/reddit*.json
 
 ```json
 {
-  "tool": "category_search_from_product_name",
+  "tool": "category_report",
   "candidate_id": "theme-001",
-  "arguments_redacted": {"product_name": "drawer organizer", "amz_site": "US"},
+  "arguments_redacted": {"node_id": "3744461", "amz_site": "US"},
   "called_at": "2026-08-24T10:00:00+08:00",
-  "reason": "default_top3_validation",
+  "reason": "all_candidate_market_size",
   "success": true,
   "response_file": "sorftime/theme-001_category.json"
 }

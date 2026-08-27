@@ -1,13 +1,13 @@
 # bggg-data-tiktok（内置模块）
 
-`bggg-data-tiktok` 是 `ngs-trend-opportunity-radar` 内部的数据采集模块，不作为独立 Skill 安装或要求用户单独调用。父 Skill 进入 TikTok 阶段时自动执行本模块。它吸收 `bggg-tiktok-search` 的真实 Chrome 思路，只采集用户已登录浏览器里公开或可见的页面，不点赞、关注、评论、私信或发布。
+`bggg-data-tiktok` 是 `ngs-trend-opportunity-radar` 内部的数据整理模块，不作为独立 Skill 安装或要求用户单独调用。TikTok 页面必须由用户选定、已登录的真实 Chrome 打开；本模块只生成查询计划、读取该 Chrome 的可见页面并规范化落盘，不自行启动独立浏览器，不切换匿名接口，不点赞、关注、评论、私信或发布。
 
 ## 路由顺序
 
-1. 优先运行本 Skill 的 `scripts/bggg_data_tiktok.py`，连接用户主动开启远程调试的 Chrome。
-2. CDP 不可用时，使用当前环境的 Chrome 控制能力操作用户已登录的 TikTok：搜索、滚动、读取 DOM、截图，并按下方 JSONL 契约落盘。
+1. 优先连接用户确认的真实 Chrome；可使用当前环境提供的 Chrome 控制能力，或连接用户主动开启远程调试／Apple Events 读取的同一浏览器会话。
+2. 内置脚本只能作为该真实 Chrome 的读取与落盘适配层，不能启动 Playwright 独立浏览器、临时 Profile 或匿名 TikTok 会话。
 3. 若出现登录、验证码、地区提示或风控，让用户手动处理后继续；不得绕过 CAPTCHA。
-4. 两条路径都不可用时，记录失败原因。不得用搜索摘要、镜像站或虚构样本补齐门槛。
+4. 用户 Chrome 无法连接时，记录失败原因并请用户完成浏览器设置。不得用应用内浏览器、搜索摘要、镜像站或虚构样本补齐门槛。
 
 `bggg-tiktok-downloader`、`bggg-tiktok-readvideo`、`bggg-tiktok-cut` 和 `bggg-tiktok-capcut` 不属于默认趋势采集链。只有用户在报告后明确要求下载或深拆具体视频时，才另行使用相应能力。
 
@@ -41,7 +41,7 @@ python3 scripts/bggg_data_tiktok_plan.py \
 
 ## Chrome CDP
 
-用户需要先自行启动带远程调试的 Chrome；该动作会打开新的 Chrome 实例，不能由 Agent 静默替换用户当前会话：
+若用户选择 CDP，需要先自行允许 Chrome 远程调试；不能由 Agent 静默启动独立 Chrome 或替换用户当前会话：
 
 ```bash
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
@@ -137,4 +137,4 @@ python3 scripts/bggg_data_tiktok_normalize.py \
 
 ## 人工浏览器回退
 
-无法运行 CDP 脚本时，仍使用同一目录和 JSONL 字段。每个搜索词至少保存一张首屏或滚动后截图，并把 `collection_mode` 写为 `visible_dom_chrome`。手动整理不降低样本门槛；不足时按小样本降级。
+无法运行 CDP 脚本时，仍只操作用户确认的真实 Chrome，并使用同一目录和 JSONL 字段。每个搜索词至少保存一张首屏或滚动后截图，并把 `collection_mode` 写为 `visible_dom_chrome`。手动整理不降低样本门槛；不足时按小样本降级。

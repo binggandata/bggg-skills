@@ -499,6 +499,45 @@ class MainScriptsTest(unittest.TestCase):
             result = validate.validate(run_dir, 2, 5)
             self.assertIn("call_1:product_search:page_4_requires_user_approval", result["errors"])
 
+    def test_category_tree_and_market_report_are_default_workflow_tools(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            sorftime_dir = run_dir / "sorftime"
+            sorftime_dir.mkdir()
+            calls = [
+                {"tool": "category_tree", "arguments": {"node_id": "3610841"}, "reason": "first_level_children"},
+                {"tool": "category_report", "arguments": {"node_id": "2422430011"}, "reason": "all_candidate_market_size"},
+            ]
+            (sorftime_dir / "call_log.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in calls), encoding="utf-8"
+            )
+            result = validate.validate(run_dir, 5, 10)
+            self.assertFalse(any("requires_user_approval" in error for error in result["errors"]))
+            self.assertFalse(any("non_default_tool" in warning for warning in result["warnings"]))
+
+    def test_v3_funnel_requires_child_nodes_and_market_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            brief_dir = run_dir / "00-research-brief"
+            analysis_dir = run_dir / "analysis"
+            brief_dir.mkdir()
+            analysis_dir.mkdir()
+            candidate = rank.grade_candidate(self.candidate())
+            candidate["child_category_node_ids"] = []
+            (brief_dir / "research_brief.json").write_text(json.dumps({
+                "requested_market": "US", "target_sales_platform": "Amazon",
+                "broad_category": "Home Organization", "output_location": str(run_dir),
+                "workflow_version": "official-category-tree-v3", "category_discovery_status": "ready",
+                "seed_terms": ["Drawer organizer"], "excluded_directions": [],
+                "selected_top_n": 1, "deep_validation_candidate_ids": ["theme-1"],
+            }), encoding="utf-8")
+            (analysis_dir / "opportunity_pool.json").write_text(
+                json.dumps({"candidates": [candidate]}), encoding="utf-8"
+            )
+            result = validate.validate(run_dir, 5, 10)
+            self.assertIn("theme-1:missing_child_category_node_ids", result["errors"])
+            self.assertIn("theme-1:missing_category_report", result["errors"])
+
     def test_sorftime_products_merge_all_pages_and_dedupe_asin(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -42,7 +42,8 @@ Sorftime 连接状态不是启动卡字段。首次使用时若当前环境尚�
 
 - `workflow_version`：固定写 `all-directions-funnel-v2`。
 - `category_discovery_status`：`ready`／`sparse`／`semantic_mismatch`／`blocked`。只有 `ready` 才允许进入三源快筛。
-- `seed_terms`：Sorftime 候选发现返回并通过语义筛选的全部有效商品方向，同时保存本地语言名称、搜索词、Node ID、市场规模和纳入理由；不得只截取销量最高的固定数量。
+- `category_expansion_budget`：每个研究品类默认 5 次，表示 1 次查看第一层加 4 次展开确认分支；用户可改选数量。
+- `seed_terms`：用户确认展开的正式父分支形成的候选方向，同时保存本地语言名称、搜索词、父 Node ID、子 Node ID、市场规模和纳入理由；不得由模型补名单。
 - `excluded_directions`：未进入快筛的原始子类目、状态和明确排除原因。
 - `free_source_statuses`：每个候选的 Google Trends、TikTok、Reddit 状态。
 - `selected_top_n`：免费快筛完成后由用户明确选择的深验数量；选择前保持 `null`。
@@ -60,9 +61,9 @@ Sorftime 连接状态不是启动卡字段。首次使用时若当前环境尚�
 - **候选方向**：将语义相关的子类目去重、统一粒度后形成的跨平台研究对象，例如“抽屉分隔板”“猫砂垫”。Google Trends、TikTok 和 Reddit 都按候选方向及当地搜索词统一调研。
 - **Top N**：全部候选方向完成三源快筛后形成的优先级；不是 Sorftime 第一次返回时就选出的销量 Top。
 
-模型不得在 Sorftime 候选发现之前凭经验生成固定数量的候选方向。模型只负责把 Sorftime 返回的子类目做语义筛选、去重和跨平台查询词转换。
+模型不得在 Sorftime 候选发现之前凭经验生成固定数量的候选方向。模型只负责定位正式节点、推荐待确认分支，并把用户确认展开的子类目做语义筛选、去重和跨平台查询词转换。
 
-每个候选方向必须反向保留至少一个 Sorftime `source_category_node_ids`。如果查询只得到 0～1 个有效子类目，先标记 `sparse`；如果不同父节点返回相同列表、或返回内容大部分与目标分支无关，标记 `semantic_mismatch`。这两种状态都不能由模型补名单，也不能继续生成 Top 排名。
+每个候选方向必须反向保留至少一个 Sorftime `source_category_node_ids`，并保留去重后的 `child_category_node_ids`。如果正式节点定位或类目树得到 0 个有效子类目，先标记 `sparse`；如果不同父节点返回相同列表、或类目报告内容大部分与目标分支无关，标记 `semantic_mismatch`。这两种状态都不能由模型补名单，也不能继续生成 Top 排名。
 
 ### 粒度判断
 
@@ -83,6 +84,7 @@ Sorftime 连接状态不是启动卡字段。首次使用时若当前环境尚�
 2. 检查 Sorftime MCP 是否已连接。已连接则只回显“已连接”；未连接则给出 `https://open.sorftime.com/mcp`、注册权益和活动口径，提示用户在 MCP 设置中填写自己的 Key，并等待其回复“已配置”，不要接收或保存明文 Key。
 3. 只读检查可用登录环境；检测到多个时按 [`login-session-routing.md`](login-session-routing.md) 让用户先选择。该问题只在需要时出现，不加入固定业务卡。
 4. 显示 Sorftime 候选发现计划、各渠道逐方向样本范围、候选发现调用次数、登录态选择和市场覆盖风险。此时还没有候选方向，不得先用模型猜一份名单。
-5. 用户明确说“开始”“按这个跑”或同义表达后，先运行 Sorftime 候选发现。
-6. 展示 Sorftime 原始子类目、语义有效候选方向与 `excluded_directions`；用户确认候选范围后，才运行 Google Trends、TikTok 和 Reddit。
-7. 免费快筛完成后展示所有方向的证据与排名，再让用户明确选择 Top N。选择前不调用 `product_search`。
+5. 用户明确说“开始”“按这个跑”或同义表达后，先定位正式节点并展示第一层子类目。
+6. 让用户确认要展开的分支；默认最多 4 个，用户可改选。展开后展示父分支及其子节点，确认“按父分支调研”还是“逐子节点调研”。
+7. 对每个候选方向补 1 次市场报告，再运行 Google Trends、TikTok 和 Reddit。
+8. 快筛完成后展示所有方向的证据与排名，再让用户明确选择 Top N。选择前不调用 `product_search`。

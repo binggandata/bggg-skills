@@ -2,13 +2,13 @@
 
 [中文](./README.md)
 
-`ngs-trend-opportunity-radar` is a Codex Skill for cross-border ecommerce opportunity research. It uses Sorftime to discover related subcategories and market size, screens every valid direction with Google Trends, TikTok, and Reddit, then deep-validates the user-selected Top N with Sorftime products and Amazon written reviews.
+`ngs-trend-opportunity-radar` is a Codex Skill for cross-border ecommerce opportunity research. It uses the official Sorftime category tree, asks the user which branches to expand, adds a market report for every confirmed direction, screens all directions with Google Trends, TikTok, and Reddit, then deep-validates the user-selected Top N with Sorftime products and Amazon written reviews.
 
 It does not promise a winning product and does not replace sampling, cost, compliance, or final launch decisions.
 
 ## What it does
 
-1. Queries Sorftime for related subcategories and market size.
+1. Uses the official Sorftime category tree and lets the user choose which branches to expand.
 2. Keeps every semantically relevant concrete product direction and discloses exclusions.
 3. Runs Google Trends, TikTok, and Reddit screening for every valid direction.
 4. Explains each direction's passes, blockers, keep/drop decision, and reasons.
@@ -22,7 +22,9 @@ It does not promise a winning product and does not replace sampling, cost, compl
 ```text
 Configure Sorftime MCP on first use
 → Complete the research brief
-→ Discover related subcategories and market size with Sorftime
+→ Show first-level branches from the official Sorftime category tree
+→ Let the user confirm branches (four expansions by default)
+→ Add one Sorftime market report per confirmed direction
 → Screen every valid direction with Google Trends, TikTok, and Reddit
 → Show the complete funnel, blockers, and exclusion reasons
 → Let the user choose Top N
@@ -51,7 +53,7 @@ Never paste the Key into a chat, Issue, log, report, or Skill file. After config
 4. Output location:
 ```
 
-The Agent first echoes the login environment, market limitations, and candidate-discovery budget. After Sorftime returns subcategories, it shows every valid direction and exclusion. The user confirms the scope before free-source screening, then chooses Top N and the deep-validation budget.
+The Agent first echoes the login environment, market limitations, and category-tree budget. Each research category defaults to five tree calls: one first-level view and four user-confirmed branch expansions. The user may choose fewer, more, or none. Each confirmed parent branch becomes one candidate direction, receives one market report, and then enters free-source screening. The user chooses Top N only after seeing the full funnel.
 
 ## Installation
 
@@ -92,18 +94,18 @@ Use ngs-trend-opportunity-radar to research multi-platform product opportunities
 | Google Trends | Every valid direction; 12 months and 53 weekly points per term | Optional five-year seasonality |
 | TikTok | At least 10 relevant videos and 5 accounts per direction | No mandatory 100-comment gate by default |
 | Reddit | At least 10 independent relevant posts per direction | No mandatory 100-comment gate by default |
-| Sorftime | Discover related subcategories and market size first | Product search for every selected direction |
+| Sorftime | Official category tree plus one market report per direction | Product search for every selected direction |
 | Amazon | Not collected during screening | 3–10 representative ASINs and at least 100 written reviews per direction |
 
 Counts are coverage gates, not proof by themselves. Query semantics, parent-content independence, concentration, and market coverage remain mandatory checks.
 
 ## Sorftime call budget
 
-- Candidate discovery starts with one category-search call; candidate pagination requires approval.
-- After the user chooses Top N, the minimum is `candidate discovery pages + N` calls.
-- Product search may reach page 3 per direction, so the worst case is `candidate discovery pages + 3 × N`.
+- Each research category defaults to five category-tree calls: one first-level view plus four confirmed branch expansions.
+- Market reports cost one call per confirmed direction and are counted separately.
+- After the user chooses Top N, product-pool validation adds at least N and at most 3 × N calls.
 - Forecasts above five calls require explicit approval of the minimum and worst-case budget.
-- `product_detail`, `product_reviews`, and `category_report` are disabled by default.
+- `product_detail` and `product_reviews` are disabled by default; `category_report` supplies market size for every candidate.
 
 ## Reddit and authenticated old Reddit
 

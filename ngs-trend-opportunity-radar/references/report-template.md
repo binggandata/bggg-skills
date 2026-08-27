@@ -12,7 +12,7 @@
 | 4 | `data-coverage` | 一句话样本覆盖与折叠的采集边界 | 实际抓到了多少，哪些没有拿到？ |
 | 5 | `trend-evidence` | Google Trends 多词折线 | 搜索兴趣是否上升或有季节性？ |
 | 6 | `social-evidence` | 全候选 TikTok + Reddit 快筛 | 每个方向在哪个平台通过或卡住？ |
-| 7 | `commercial-evidence` | Top N 的 Sorftime 商业数据、代表 ASIN 图与指标 | 用户选择的方向是否有规模，代表商品是谁？ |
+| 7 | `commercial-evidence` | 全候选 Sorftime 市场对比，以及 Top N 代表 ASIN 图与指标 | 各方向规模和竞争结构如何，用户选择方向的代表商品是谁？ |
 | 8 | `voc-pains` | Amazon 低星痛点图 | 用户买后最不满意什么？ |
 | 9 | `product-opportunity` | 产品机会卡 | 可以针对谁、在哪个场景、怎么改？ |
 | 10 | `decision-risks` | 3～5 个关键风险与反证 | 什么情况会推翻当前判断？ |

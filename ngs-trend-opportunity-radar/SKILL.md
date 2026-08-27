@@ -14,7 +14,7 @@ description: Discover and validate concrete ecommerce product opportunities from
 - 不为缺失字段补造数字；来源不支持目标市场时明确降级。
 - 不采集 X；它不是本 Skill 的默认或可选数据源。
 - Reddit 使用内置 `bggg-data-reddit` 模块；API 失败时正式回退到用户已登录的 `old.reddit.com`。可见 DOM 只能作为明确标记的小样本，不能冒充完整评论树。
-- TikTok 语言只能证明语言匹配，不能单独证明地理市场。
+- TikTok 采集只使用用户选定、已登录的真实 Chrome；内置模块只负责查询计划、页面可见数据规范化和落盘，不自行启动独立浏览器、不换匿名接口。语言只能证明语言匹配，不能单独证明地理市场。
 - 首次调用展示 3 项业务信息（研究品类、目标市场、平台）和 1 项交付设置（输出位置）；只追问缺失项，不替用户默选。
 - 首次使用若尚未连接 Sorftime，先给出配置入口 `https://open.sorftime.com/mcp`，提示用户注册并在当前 AI 工具的 MCP 设置中填写自己的 Sorftime Key，配置后只需回复“已配置”。可以说明“首次注册赠送 3 天、100 次调用”，同时注明活动以 Sorftime 页面最新规则为准。不要让用户把 Key 发到对话里，也不得把 Key 写进 Skill、报告、日志或交付包。
 - 登录态是业务卡后的条件式闸门：有多个可用登录环境时必须让用户选择；不读取凭证、不静默混用账号。
@@ -24,17 +24,19 @@ description: Discover and validate concrete ecommerce product opportunities from
 
 1. 读取 [`references/research-brief.md`](references/research-brief.md)，首次使用时先检查 Sorftime MCP，再展示并整理《趋势选品启动卡》。若 Sorftime 尚未连接，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 给出 `https://open.sorftime.com/mcp`，说明注册权益并提示用户在 MCP 设置中填写 Key；不接收明文 Key。复用用户已给信息，只追问研究品类、目标市场、平台和输出位置中的缺失项；不要追加售价、毛利、排除项或筛选范围。输出位置是交付设置，不是选品条件。
 2. 业务卡齐全后，按 [`references/login-session-routing.md`](references/login-session-routing.md) 只读检查可用登录环境。只有一个时回显；多个时先让用户选择统一环境或按 Google Trends／TikTok／Reddit 浏览器回退分配，选择前不采集。
-3. 回显业务卡、登录态选择、三个免费源的固定快筛范围，以及 Sorftime 的候选发现调用预算；用户确认后才开始外部采集或付费调用。
-4. 先判断研究品类能否直接查询：`家居收纳`、`宠物清洁`这类业务品类可直接进入候选发现；`Home & Kitchen` 这类平台一级大类需先收窄，已具体到单一商品或 SKU 则跳过候选漏斗，改走单品验证。不得由模型先凭经验拆出固定数量的方向。随后调用一次 Sorftime `category_search_from_product_name`，用用户的研究品类和目标站点取得相关子类目、Node ID 与市场规模。若只返回 0～1 个有效子类目，标记 `sparse`，不能直接建立 Top 漏斗；按预算规则说明后再用 `category_tree` 定位正式父节点或子节点。
-5. 从 Sorftime 返回中保留全部语义相关、可对应具体商品的子类目，再经过去重和粒度统一形成“候选方向”；不预设候选数量，也不把模型自行联想的产品混入候选池。每个候选方向必须可搜索、互不重复，并保存 `source_category_node_ids`、来源子类目、本地语言名称、跨平台搜索词、纳入理由和市场规模。重复、抽象需求、品牌词、非商品节点或语义偏题项进入 `excluded_directions`，记录排除原因。不同父节点查询若返回相同结果，或大部分行不属于目标分支，整次结果标记 `semantic_mismatch`，不得进入候选池。只有 `category_discovery_status=ready` 才能进入三源快筛。
-6. 按 [`references/source-sample-ranges.md`](references/source-sample-ranges.md) 和 [`references/sample-gates.md`](references/sample-gates.md) 对每个候选方向统一运行三个免费源：Google Trends 看搜索需求，TikTok 看内容扩散与使用演示，Reddit 看社区讨论与真实场景。跨平台比较单位是“候选方向”，不是要求各平台存在同名类目。任何方向都不得因早期排名而跳过某一免费源。每个“找不到”必须区分 `blocked`、`empty`、`semantic_mismatch` 和真实弱信号；前两类不能写成零需求。
-7. 免费快筛完成后先交付漏斗表：每个方向的三个来源状态、关键数字、通过项、卡点、初步等级、保留／淘汰决定及理由。此时停止，询问用户希望多少个方向进入深验；Top N 必须由用户明确选择，不默认为 Top 1。
-8. 用户选择 Top N 后，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 计算最少与最坏调用数并确认预算。对所选方向复用候选发现阶段的类目规模；只有映射缺失或偏题时才追加类目校正。随后分别调用 `product_search` 取代表商品，语义筛选后每方向保留 3～10 个 ASIN。每方向默认最多看 3 页，达到 3～10 个即停止；第 4 页前再次确认。
-9. 为每个深验方向分别创建 Amazon 目标，使用 `bggg-data-amazon` 抓 Amazon US 书面评论；每方向至少 100 条，正常目标 300～1000 条。优先 1 个核心 ASIN 用 `full`，其余用 `basic`；分星抽样不能用于计算市场好评率。
-10. 从 Amazon 低星缺陷为每个深验方向生成可解决的产品假设；TikTok 可见评论和达到独立父帖门槛的 Reddit 讨论只作补充。每个结论保留 `source_id`、原文、URL、父级 ID 与 `collection_mode`。
-11. 按 [`references/opportunity-grading.md`](references/opportunity-grading.md) 对全部方向给出 A／B／C／D；未进入深验的方向必须标注“仅完成免费快筛”，不能把未调用 Sorftime／Amazon 写成验证失败。报告必须逐项解释为什么其他方向未进入 Top N。
-12. 运行确定性脚本统计，先生成按渠道区分的内部 CSV，再合并为一个 `research_data.xlsx`；同时生成 Markdown 与可视化 HTML。数据文件契约见 [`references/report-contract.md`](references/report-contract.md)，主报告模板见 [`references/report-template.md`](references/report-template.md)，交付前执行 [`references/quality-checklist.md`](references/quality-checklist.md)。
-13. 报告交付后主动给出 3～5 个可继续咨询的方向，例如深验更多候选、ASIN 对比、完整差评证据、产品打样规格或换市场重跑；等待用户选择，不自动扩大 Top N 或发布。
+3. 回显业务卡、登录态选择、三个免费源的固定快筛范围，以及 Sorftime 类目树预算。每个研究品类默认 5 次：1 次查看第一层、4 次展开用户确认的分支。用户可改为少于 4 个、超过 4 个或不展开；超过默认预算时先展示新增次数，确认后才调用。
+4. 先判断研究品类粒度：`家居收纳`、`宠物清洁`这类业务品类进入官方类目树；`Home & Kitchen` 这类平台一级大类先让用户收窄，已具体到单一商品或 SKU 则跳过候选漏斗，改走单品验证。先用 Sorftime `category_name_search` 定位语义匹配的正式节点，必要时用 `category_tree` 从站点顶层逐级定位；不得用 `category_search_from_product_name` 代替业务品类的类目树枚举，也不得由模型凭经验拆名单。
+5. 对定位到的正式节点调用一次 `category_tree`，展示直接下一层的数量、名称和 Node ID。若第一层超过 4 个，Agent 可基于与研究品类的语义相关性推荐 4 个，但必须让用户确认或改选；若不超过 4 个则展示全部。每个确认分支再调用一次 `category_tree` 读取下一层。展开只表示读取官方子节点，不等于市场规模、商品池或深验。
+6. 默认把用户确认展开的父分支作为候选方向，其下一层节点用于解释范围和生成跨平台搜索词；不得把展开得到的所有孙节点静默膨胀成新的候选池。若用户希望逐个孙节点调研，先展示节点总数、额外 Sorftime 市场调用数和三个免费源的采集量，再让用户确认。每个候选保存 `source_category_node_ids`、`child_category_node_ids`、本地语言名称、跨平台搜索词和纳入理由。
+7. 在跨平台排序前，对每个候选方向分别调用一次 Sorftime `category_report` 补齐 Top-100 月销量、月销售额、价格、集中度、评论门槛和退货率等可用市场字段；字段缺失保持缺失。重复、抽象需求、品牌词、非商品节点或语义偏题项进入 `excluded_directions` 并记录原因。不同节点返回相同或明显偏题结果时标记 `semantic_mismatch`，不得进入候选池。只有 `category_discovery_status=ready` 且每个候选已有有效市场规模或明确缺失原因，才能进入三源快筛。
+8. 按 [`references/source-sample-ranges.md`](references/source-sample-ranges.md) 和 [`references/sample-gates.md`](references/sample-gates.md) 对每个候选方向统一运行三个免费源：Google Trends 看搜索需求，TikTok 看内容扩散与使用演示，Reddit 看社区讨论与真实场景。跨平台比较单位是“候选方向”，不是要求各平台存在同名类目。任何方向都不得因早期排名而跳过某一免费源。每个“找不到”必须区分 `blocked`、`empty`、`semantic_mismatch` 和真实弱信号；前两类不能写成零需求。
+9. 免费快筛完成后先交付漏斗表：每个方向的 Sorftime 市场规模、三个免费来源状态、关键数字、通过项、卡点、初步等级、保留／淘汰决定及理由。此时停止，询问用户希望多少个方向进入深验；Top N 必须由用户明确选择，不默认为 Top 1。
+10. 用户选择 Top N 后，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 计算最少与最坏调用数并确认预算。对所选方向复用候选阶段的类目报告，随后分别调用 `product_search` 取代表商品，语义筛选后每方向保留 3～10 个 ASIN。每方向默认最多看 3 页，达到 3～10 个即停止；第 4 页前再次确认。
+11. 为每个深验方向分别创建 Amazon 目标，使用 `bggg-data-amazon` 抓 Amazon US 书面评论；每方向至少 100 条，正常目标 300～1000 条。优先 1 个核心 ASIN 用 `full`，其余用 `basic`；分星抽样不能用于计算市场好评率。
+12. 从 Amazon 低星缺陷为每个深验方向生成可解决的产品假设；TikTok 可见评论和达到独立父帖门槛的 Reddit 讨论只作补充。每个结论保留 `source_id`、原文、URL、父级 ID 与 `collection_mode`。
+13. 按 [`references/opportunity-grading.md`](references/opportunity-grading.md) 对全部方向给出 A／B／C／D；未进入深验的方向必须标注“已完成类目市场与免费快筛，未做商品／评论深验”，不能写成验证失败。报告必须逐项解释为什么其他方向未进入 Top N。
+14. 运行确定性脚本统计，先生成按渠道区分的内部 CSV，再合并为一个 `research_data.xlsx`；同时生成 Markdown 与可视化 HTML。数据文件契约见 [`references/report-contract.md`](references/report-contract.md)，主报告模板见 [`references/report-template.md`](references/report-template.md)，交付前执行 [`references/quality-checklist.md`](references/quality-checklist.md)。
+15. 报告交付后主动给出 3～5 个可继续咨询的方向，例如深验更多候选、ASIN 对比、完整差评证据、产品打样规格或换市场重跑；等待用户选择，不自动扩大 Top N 或发布。
 
 ## 脚本
 
@@ -59,19 +61,20 @@ python3 scripts/export_audit_csv.py --run-dir '<run>'
 node scripts/build_research_workbook.mjs --run-dir '<run>'
 python3 scripts/rank_candidates.py --input '<run>/analysis/candidates.json' --output '<run>/analysis/opportunity_pool.json'
 python3 scripts/render_report.py --brief '<run>/00-research-brief/research_brief.json' --pool '<run>/analysis/opportunity_pool.json' --run-dir '<run>' --out-dir '<run>/report'
-python3 scripts/validate_run.py --run-dir '<run>' --soft-call-cap 2 --hard-call-cap 5
+python3 scripts/validate_run.py --run-dir '<run>' --soft-call-cap '<displayed default budget>' --hard-call-cap '<user-approved cap>'
 ```
 
-内置 `bggg-data-tiktok` 负责 TikTok 可见页面采集；内置 `bggg-data-reddit` 负责 Reddit API、`old.reddit.com` 回退与规范化；其余脚本负责去重、门槛判断、渲染和证据检查。查询语义／语言复核、痛点可解决性、产品假设与最终进入决策由 Agent 和用户完成。
+TikTok 必须在用户选定、已登录的真实 Chrome 中采集；内置 `bggg-data-tiktok` 只负责查询计划、可见数据规范化与落盘。内置 `bggg-data-reddit` 负责 Reddit API、`old.reddit.com` 回退与规范化；其余脚本负责去重、门槛判断、渲染和证据检查。查询语义／语言复核、痛点可解决性、产品假设与最终进入决策由 Agent 和用户完成。
 
 ## 默认调用额度
 
-- 候选发现固定从 1 次类目搜索开始；若候选结果有分页，追加前先征得用户同意。
-- 用户选择 Top N 后，每个深验方向至少 1 次商品搜索，因此最少调用数为 `候选发现页数 + N`。
-- 每个方向商品搜索最多自动看到第 3 页，因此不含类目校正时，最坏调用数为 `候选发现页数 + 3 × N`。
+- 每个研究品类默认类目树预算为 5 次：1 次查看第一层、4 次展开用户确认的分支。用户可选择 0～全部分支；超出 5 次前先确认新增次数。
+- 候选市场规模预算为 `候选方向数` 次 `category_report`，必须在三源快筛前展示；它不包含在 5 次类目树预算中。
+- 用户选择 Top N 后，每个深验方向至少 1 次商品搜索，因此深验最少新增 `N` 次。
+- 每个方向商品搜索最多自动看到第 3 页，因此深验最坏新增 `3 × N` 次。
 - Top N 选择导致预计总调用超过 5 次时，必须先展示最少／最坏预算并获得确认；确认后的预算是本次任务上限，不得静默增加。
 - 商品搜索准备进入任一方向第 4 页，或需要新增类目校正时，必须再次说明原因和边际收益。
-- 默认不调用 `product_detail`、Sorftime `product_reviews` 或 `category_report`；Amazon 评论走 `bggg-data-amazon`。
+- 默认不调用 `product_detail` 或 Sorftime `product_reviews`；全候选 `category_report` 是市场规模必需调用，Amazon 评论走 `bggg-data-amazon`。
 
 ## 最终交付
 
