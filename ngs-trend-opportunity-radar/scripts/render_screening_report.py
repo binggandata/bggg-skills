@@ -238,7 +238,12 @@ def render_html(context: dict, evidence: list[dict]) -> str:
     recommended = [row for row in directions if row.get("decision") == "建议深验"]
     recommended_names = "、".join(row["name"] for row in recommended) or "暂无"
     sales_rows = [(row["name"], (row.get("sorftime") or {}).get("top100_monthly_sales_volume"), fmt_int((row.get("sorftime") or {}).get("top100_monthly_sales_volume"))) for row in directions]
-    tiktok_rows = [(row["name"], (row.get("tiktok") or {}).get("visible_metric_median"), fmt_int((row.get("tiktok") or {}).get("visible_metric_median"))) for row in directions]
+    def tiktok_median_views(row: dict):
+        metrics = row.get("tiktok") or {}
+        value = metrics.get("views_median")
+        return value if value is not None else metrics.get("visible_metric_median")
+
+    tiktok_rows = [(row["name"], tiktok_median_views(row), fmt_int(tiktok_median_views(row))) for row in directions]
     reddit_rows = [(row["name"], (row.get("reddit") or {}).get("posts"), f"{fmt_int((row.get('reddit') or {}).get('posts'))} 篇") for row in directions]
     competition_rows = [(row["name"], (row.get("sorftime") or {}).get("amazon_owned_share_pct"), (row.get("sorftime") or {}).get("low_review_sales_share_pct")) for row in directions]
     table_rows = []
@@ -263,7 +268,7 @@ def render_html(context: dict, evidence: list[dict]) -> str:
     scale_leader = max(directions, key=lambda row: float((row.get("sorftime") or {}).get("top100_monthly_sales_volume") or 0))
     low_amazon = min(directions, key=lambda row: float((row.get("sorftime") or {}).get("amazon_owned_share_pct") or 101))
     narrow_names = "、".join(row["name"] for row in directions if "收窄" in str(row.get("decision"))) or "无"
-    missing_tiktok = "、".join(row["name"] for row in directions if (row.get("tiktok") or {}).get("visible_metric_median") is None)
+    missing_tiktok = "、".join(row["name"] for row in directions if tiktok_median_views(row) is None)
     highest_amazon = max(directions, key=lambda row: float((row.get("sorftime") or {}).get("amazon_owned_share_pct") or 0))
     generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
     return f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(context['research_category'])}｜{len(directions)} 个方向趋势选品快筛</title><style>
@@ -275,7 +280,7 @@ def render_html(context: dict, evidence: list[dict]) -> str:
 <div class="picks">{''.join(recommended_cards)}</div>
 <h2 id="data-coverage">一共抓到了什么</h2><section class="data-box"><p class="coverage">Sorftime {context['tree_calls']} 次类目树＋{context['category_report_calls']} 次市场报告；Google Trends {context['trend_points']:,} 个周度点；TikTok {context['tiktok_videos']} 个视频；Reddit {context['reddit_posts']} 篇帖子。Amazon 0 条评论，因为尚未选择 Top N，不是抓取失败。</p><details><summary>查看口径边界</summary><p class="fine">Google Trends 是同组关键词内的相对指数，不是销量。TikTok 使用用户登录态 Chrome，语言匹配不能单独证明地理市场。Reddit 使用登录态 old Reddit 同源数据，帖子用于快筛；评论树只在深验阶段采集。Sorftime category_report 用于市场结构，product_search 尚未调用。</p></details></section>
 <h2 id="trend-evidence">1. 搜索需求怎么变化</h2><section class="chart-card"><h3>{html.escape(context['research_category'])}：近 12 个月搜索趋势</h3>{svg_lines(context['trend_series'], f"{context['research_category']} Google Trends 12m")}<p class="caption">覆盖市场：{html.escape('／'.join(context['trend_markets']) or context['target_market'])}。同一组关键词内相对指数；长期同比增长不代表最近一季仍在加速。</p></section>
-<h2 id="social-evidence">2. TikTok 和 Reddit 有没有真实内容</h2><div class="chart-grid"><section class="chart-card"><h3>TikTok：{len(directions)} 个方向统一采样</h3>{svg_bars(tiktok_rows, 'TikTok median visible metric', '#e79245')}<p class="caption">横条为可见指标中位数；{html.escape(f'{missing_tiktok}互动字段缺失，保留为空、不补零' if missing_tiktok else '各方向可见互动字段均按落盘数据展示')}。</p></section><section class="chart-card"><h3>Reddit：{len(directions)} 个方向均超过 10 篇</h3>{svg_bars(reddit_rows, 'Reddit relevant posts', '#4267a8')}<p class="caption">严格语义清洗后共 {context['reddit_posts']} 篇父帖；本阶段用于判断讨论存在性和使用场景，不把帖子评论数当成已抓评论。</p></section></div>
+<h2 id="social-evidence">2. TikTok 和 Reddit 有没有真实内容</h2><div class="chart-grid"><section class="chart-card"><h3>TikTok：{len(directions)} 个方向统一采样</h3>{svg_bars(tiktok_rows, 'TikTok median views', '#e79245')}<p class="caption">横条为相关视频播放量中位数，用于减少单条爆款干扰；{html.escape(f'{missing_tiktok}播放字段未识别，保留为空、不补零' if missing_tiktok else '各方向播放量均由页面指标块落盘解析')}。</p></section><section class="chart-card"><h3>Reddit：{len(directions)} 个方向均超过 10 篇</h3>{svg_bars(reddit_rows, 'Reddit relevant posts', '#4267a8')}<p class="caption">严格语义清洗后共 {context['reddit_posts']} 篇父帖；本阶段用于判断讨论存在性和使用场景，不把帖子评论数当成已抓评论。</p></section></div>
 <h2 id="commercial-evidence">3. 哪些方向有足够市场规模</h2><section class="chart-card"><h3>{len(directions)} 个方向 Sorftime Top-100 月销量</h3>{svg_bars(sales_rows, 'Sorftime Top-100 monthly sales', '#176b45')}<p class="caption">来源：Sorftime category_report，n={len(directions)} 个候选方向。父类目语义偏宽的方向只能作为收窄线索，不能直接等同于具体产品机会。</p></section>
 <h2>4. 竞争结构会不会卡住进入</h2><section class="chart-card"><h3>Amazon 自营占比越高越难正面进入；低评论商品占比越高越有新人窗口</h3>{svg_grouped_percent(competition_rows, 'Amazon owned share and low-review sales share')}<p class="caption">来源：Sorftime category_report。当前 Amazon 自营占比最高的是 {html.escape(highest_amazon['name'])}（约 {float((highest_amazon.get('sorftime') or {}).get('amazon_owned_share_pct') or 0):.2f}%），最低的是 {html.escape(low_amazon['name'])}（约 {float((low_amazon.get('sorftime') or {}).get('amazon_owned_share_pct') or 0):.2f}%）。</p></section>
 <h2 id="voc-pains">5. Amazon 差评为什么没有</h2><section class="data-box"><h3>这是工作流阶段，不是平台数据失败</h3><p>本轮只完成“全方向快筛”。你选择 Top N 后，Skill 才会对所选方向调用 Sorftime 商品搜索，筛 3–10 个相关 ASIN，并抓每个方向至少 100 条 Amazon 书面评论。现在提前抓，会把预算花在你可能不想深验的方向上。</p></section>

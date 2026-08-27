@@ -28,6 +28,39 @@ def parse_count(value: object) -> int | None:
     return int(float(match.group(1)) * MULTIPLIERS[match.group(2).upper()])
 
 
+def infer_video_metrics(text_raw: object) -> dict[str, int | None]:
+    """Infer the visible TikTok metric block without turning a missing field into zero.
+
+    Chrome search captures can repeat the like count before the full metric block.
+    In that layout the sequence is like, like, views, comments; otherwise it is
+    like, views, comments. Parsing stops before rate, duration, date, and copy.
+    """
+    counts: list[int] = []
+    for raw_line in str(text_raw or "").splitlines()[:16]:
+        line = raw_line.strip()
+        if not line or line in {"获赞最多", "最相关", "Most liked", "Top"}:
+            continue
+        if counts and ("%" in line or re.fullmatch(r"\d{1,2}:\d{2}", line) or re.fullmatch(r"\d{4}[/-]\d{1,2}[/-]\d{1,2}", line)):
+            break
+        value = parse_count(line)
+        if value is not None:
+            counts.append(value)
+        elif counts:
+            break
+    if len(counts) < 2:
+        return {"likes": None, "views": None, "comments": None, "shares": None, "saves": None}
+    duplicate_like = len(counts) >= 3 and counts[0] == counts[1]
+    start = 1 if duplicate_like else 0
+    ordered = counts[start:]
+    return {
+        "likes": ordered[0] if len(ordered) > 0 else None,
+        "views": ordered[1] if len(ordered) > 1 else None,
+        "comments": ordered[2] if len(ordered) > 2 else None,
+        "shares": ordered[3] if len(ordered) > 3 else None,
+        "saves": ordered[4] if len(ordered) > 4 else None,
+    }
+
+
 def stable_id(*parts: object) -> str:
     payload = "\x1f".join("" if part is None else str(part) for part in parts).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
@@ -67,6 +100,11 @@ def normalize_item(item: dict, package: dict, source_file: Path, keywords: list[
     if content_type not in {"video", "comment"}:
         return None
     engagement = {key: parse_count(value) for key, value in (item.get("engagement") or {}).items()}
+    if content_type == "video":
+        inferred = infer_video_metrics(text_raw)
+        for key, value in inferred.items():
+            if engagement.get(key) is None and value is not None:
+                engagement[key] = value
     url = item.get("url") or item.get("video_url") or package.get("source_url")
     context = {
         "query": package.get("query"), "requested_market": package.get("requested_market"),

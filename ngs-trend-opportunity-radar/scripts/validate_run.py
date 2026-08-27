@@ -284,8 +284,16 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
             errors.append("report_needs_follow_up_consultation_section")
         pool = load_json(pool_path) if pool_path.exists() else {}
         candidates = pool.get("candidates") or []
-        top = candidates[0] if candidates else {}
-        representative_asins = (((top.get("sorftime") or {}).get("product_search") or {}).get("representative_asins") or [])
+        selected_candidates = [
+            candidate for candidate in candidates
+            if (candidate.get("metrics") or {}).get("selected_for_deep_validation")
+        ]
+        representative_asins = {
+            str(asin)
+            for candidate in selected_candidates
+            for asin in (((candidate.get("sorftime") or {}).get("product_search") or {}).get("representative_asins") or [])
+            if asin
+        }
         product_cards = html_text.count('class="product-card"')
         consistency["representative_asins"] = len(representative_asins)
         consistency["product_cards"] = product_cards
@@ -295,6 +303,12 @@ def validate(run_dir: Path, soft_cap: int, hard_cap: int) -> dict:
             errors.append("bar_chart_labels_need_right_edge_protection")
         if product_cards and 'class="product-image-missing"' not in html_text and 'src="data:image/' not in html_text:
             errors.append("product_cards_need_embedded_image_or_explicit_placeholder")
+        direction_cards = html_text.count('class="direction-card"')
+        if candidates and direction_cards < len(candidates):
+            errors.append(f"direction_cards:{direction_cards}<candidates:{len(candidates)}")
+        opportunity_cards = html_text.count('class="concept"')
+        if selected_candidates and opportunity_cards < len(selected_candidates):
+            errors.append(f"opportunity_cards:{opportunity_cards}<selected_candidates:{len(selected_candidates)}")
 
         evidence_path = run_dir / "analysis" / "evidence_index.json"
         evidence_rows_for_html = load_json(evidence_path) if evidence_path.exists() else []

@@ -9,6 +9,8 @@ import json
 import re
 from pathlib import Path
 
+from bggg_data_tiktok_normalize import infer_video_metrics
+
 
 def load_json(path: Path, default=None):
     if not path.exists():
@@ -150,7 +152,11 @@ def write_csv(path: Path, rows: list[dict], fields: list[str] | None = None) -> 
 
 def flatten_content(row: dict) -> dict:
     context = row.get("context") or {}
-    engagement = row.get("engagement") or {}
+    engagement = dict(row.get("engagement") or {})
+    if str(row.get("platform") or "").casefold() == "tiktok" and row.get("content_type") == "video":
+        for key, value in infer_video_metrics(row.get("text_raw")).items():
+            if engagement.get(key) is None and value is not None:
+                engagement[key] = value
     return {
         "candidate_id": context.get("candidate_id") or row.get("theme"),
         "platform": row.get("platform"),
@@ -165,7 +171,10 @@ def flatten_content(row: dict) -> dict:
         "likes_or_score": engagement.get("likes") if engagement.get("likes") is not None else engagement.get("score"),
         "views": engagement.get("views"),
         "comments": engagement.get("comments") or engagement.get("num_comments"),
+        "shares": engagement.get("shares"),
+        "saves": engagement.get("saves"),
         "verified": engagement.get("verified"),
+        "author_handle": context.get("author_handle") or row.get("author_handle"),
         "query": context.get("query"),
         "post_title": context.get("post_title"),
         "subreddit": context.get("subreddit"),

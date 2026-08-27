@@ -24,12 +24,13 @@ def load_module(name: str, filename: str):
 
 
 rank = load_module("rank_candidates", "rank_candidates.py")
+tiktok_normalize = load_module("bggg_data_tiktok_normalize", "bggg_data_tiktok_normalize.py")
+sys.modules["bggg_data_tiktok_normalize"] = tiktok_normalize
 render = load_module("render_report", "render_report.py")
 screening_render = load_module("render_screening_report", "render_screening_report.py")
 validate = load_module("validate_run", "validate_run.py")
 tiktok = load_module("bggg_data_tiktok", "bggg_data_tiktok.py")
 tiktok_plan = load_module("bggg_data_tiktok_plan", "bggg_data_tiktok_plan.py")
-tiktok_normalize = load_module("bggg_data_tiktok_normalize", "bggg_data_tiktok_normalize.py")
 tiktok_analyze = load_module("analyze_tiktok_samples", "analyze_tiktok_samples.py")
 reddit_analyze = load_module("analyze_reddit_samples", "analyze_reddit_samples.py")
 reddit_api = load_module("bggg_data_reddit_api", "bggg_data_reddit_api.py")
@@ -187,6 +188,23 @@ class MainScriptsTest(unittest.TestCase):
             render.safe_url("https://m.media-amazon.com/images/I/511e0 xik5FL.jpg"),
             "https://m.media-amazon.com/images/I/511e0xik5FL.jpg",
         )
+
+    def test_tiktok_metric_block_maps_views_without_false_zero(self):
+        ordinary = "54.5k\n5.4M\n846\n7,338\n22.1k\n1.57%\n00:22\ncaption"
+        duplicate = "1795\n1,795\n195.5k\n87\n839\n3.61%\n00:09\ncaption"
+        missing = "获赞最多\ncaption only"
+        self.assertEqual(tiktok_normalize.infer_video_metrics(ordinary)["views"], 5_400_000)
+        self.assertEqual(tiktok_normalize.infer_video_metrics(ordinary)["comments"], 846)
+        self.assertEqual(tiktok_normalize.infer_video_metrics(duplicate)["views"], 195_500)
+        self.assertIsNone(tiktok_normalize.infer_video_metrics(missing)["views"])
+        signals = render.tiktok_signals_from_rows([
+            {"content_type": "video", "text_raw": ordinary, "context": {"candidate_id": "cat"}},
+            {"content_type": "video", "text_raw": duplicate, "context": {"candidate_id": "cat"}},
+        ])
+        metrics = signals[0]["metrics"]
+        self.assertEqual(metrics["views"], 5_400_000)
+        self.assertEqual(metrics["median_views"], 2_797_750)
+        self.assertAlmostEqual(metrics["top_video_share"], 5_400_000 / 5_595_500)
 
     def test_deep_report_requires_explicit_consistent_top_n(self):
         candidate = rank.grade_candidate(self.candidate())
