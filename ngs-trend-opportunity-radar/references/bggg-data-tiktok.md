@@ -4,7 +4,7 @@
 
 ## 路由顺序
 
-1. 优先连接用户确认的真实 Chrome；可使用当前环境提供的 Chrome 控制能力，或连接用户主动开启远程调试／Apple Events 读取的同一浏览器会话。
+1. 优先连接用户确认的真实 Chrome。若当前环境尚未接入，在该 Chrome 打开 `chrome://inspect/#remote-debugging`，勾选“Allow remote debugging for this browser instance”，并由用户同意连接弹窗；随后使用当前环境提供的 Chrome 控制能力读取同一浏览器会话。
 2. 内置脚本只能作为该真实 Chrome 的读取与落盘适配层，不能启动 Playwright 独立浏览器、临时 Profile 或匿名 TikTok 会话。
 3. 若出现登录、验证码、地区提示或风控，让用户手动处理后继续；不得绕过 CAPTCHA。
 4. 用户 Chrome 无法连接时，记录失败原因并请用户完成浏览器设置。不得用应用内浏览器、搜索摘要、镜像站或虚构样本补齐门槛。
@@ -41,16 +41,15 @@ python3 scripts/bggg_data_tiktok_plan.py \
 
 ## Chrome CDP
 
-若用户选择 CDP，需要先自行允许 Chrome 远程调试；不能由 Agent 静默启动独立 Chrome 或替换用户当前会话：
+若用户选择 Chrome 远程调试，直接在用户当前 Chrome 打开：
 
-```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9222 \
-  --profile-directory="Default" \
-  --no-first-run
+```text
+chrome://inspect/#remote-debugging
 ```
 
-检查连接：
+勾选“Allow remote debugging for this browser instance／允许此浏览器实例进行远程调试”，出现“要允许远程调试吗？”弹窗时由用户点“允许”。不能由 Agent 静默启动独立 Chrome、临时 Profile 或替换用户当前会话。
+
+若环境使用本 Skill 的旧式 CDP 脚本，可再检查连接：
 
 ```bash
 python3 scripts/bggg_data_tiktok.py check
