@@ -4,6 +4,8 @@
 
 `ngs-trend-opportunity-radar` is a Codex Skill for cross-border ecommerce opportunity research. It uses the official Sorftime category tree, asks the user which branches to expand, adds a market report for every confirmed direction, screens all directions with Google Trends, TikTok, and Reddit, then deep-validates the user-selected Top N with Sorftime products and Amazon written reviews.
 
+Each run researches exactly one category. If a user requests home organization and pet cleaning together, the Skill creates two independent run directories and delivers a separate HTML report, Excel workbook, and Markdown file for each category.
+
 It does not promise a winning product and does not replace sampling, cost, compliance, or final launch decisions.
 
 ## What it does
@@ -16,6 +18,7 @@ It does not promise a winning product and does not replace sampling, cost, compl
 6. Searches representative products and analyzes Amazon US reviews for each selected direction.
 7. Assigns A/B/C/D grades to the full pool and improvement directions to deep-validated candidates.
 8. Generates a self-contained HTML report, a 10-sheet Excel workbook, and Markdown.
+9. Splits multi-category requests into independent runs and deliverables; any cross-category overview is optional and additional.
 
 ## Workflow
 
@@ -32,6 +35,8 @@ Configure Sorftime MCP on first use
 → Deep-validate Top N with Sorftime products and Amazon multi-ASIN reviews
 → Produce an A/B/C/D opportunity pool and product directions
 ```
+
+For multiple requested categories, the full workflow runs once per category. Candidate pools, sample counts, evidence indexes, Sorftime call totals, and formal workbooks are never shared across categories.
 
 ## First use
 
@@ -133,6 +138,10 @@ The same three files are produced at the screening checkpoint and after deep val
 
 The Excel workbook contains 10 sheets: Data Coverage, Google Trends, TikTok Videos, TikTok Comments, Reddit Posts, Reddit Comments, Sorftime Category, Sorftime Products, Amazon Reviews, and Evidence Index.
 
+Each deliverable trio belongs to one research category. A combined overview, when requested, is an additional artifact and never replaces the per-category outputs.
+
+Export and rendering commands receive the research category explicitly, and the workbook title carries the same category to prevent cross-category leakage from development fixtures.
+
 Raw JSON/JSONL, internal CSV files, screenshots, failure logs, and validation artifacts remain in the user-selected run directory and are not committed.
 
 ## Security and privacy
@@ -152,7 +161,7 @@ Use the Skill in accordance with applicable law, platform terms, and your organi
 python3 -m unittest discover -s ngs-trend-opportunity-radar/tests -p 'test_*.py'
 ```
 
-Current test count: 33.
+Current test count: 37.
 
 ## Disclaimer
 

@@ -386,25 +386,37 @@ class MainScriptsTest(unittest.TestCase):
             (run_dir / "analysis").mkdir()
             (run_dir / "data" / "clean").mkdir(parents=True)
             (run_dir / "data" / "signals").mkdir(parents=True)
-            funnel = {
-                "stage": "all_direction_screening_complete_waiting_for_user_top_n",
-                "directions": [{
+            direction = {
                     "candidate_id": "home_bathroom", "name": "浴室收纳", "decision": "建议深验",
                     "reasons": ["规模成立", "跨平台信号完整"],
                     "sorftime": {"top100_monthly_sales_volume": 880000, "amazon_owned_share_pct": 1.0, "low_review_sales_share_pct": 2.5},
                     "google_trends": {"us_5y_recent_year_vs_prior": 0.82},
                     "tiktok": {"videos": 12, "authors": 10, "visible_metric_median": 5000},
                     "reddit": {"posts": 20},
-                }],
             }
-            (run_dir / "analysis" / "screening_funnel.json").write_text(json.dumps(funnel), encoding="utf-8")
-            html_text = screening_render.render_html(funnel, {"home": [], "pet": []}, [])
-            markdown_text = screening_render.render_markdown(funnel, [])
-            self.assertIn("等待你选择 Top N", html_text)
+            context = {
+                "research_category": "家居收纳", "target_market": "美国", "platform": "Amazon",
+                "directions": [direction], "trend_points": 312, "trend_markets": ["US"],
+                "tiktok_videos": 12, "reddit_posts": 20, "sorftime_calls": 6,
+                "tree_calls": 5, "category_report_calls": 1, "trend_series": [],
+            }
+            html_text = screening_render.render_html(context, [])
+            markdown_text = screening_render.render_markdown(context, [])
+            self.assertIn("等待选择 Top N", html_text)
             self.assertIn("Amazon 0 条评论", html_text)
             self.assertIn('href="research_data.xlsx"', html_text)
-            self.assertEqual(html_text.count('<svg class="chart"'), 6)
+            self.assertEqual(html_text.count('<svg class="chart"'), 5)
+            expected_sections = [
+                "executive-summary", "research-scope", "decision-summary", "data-coverage",
+                "trend-evidence", "social-evidence", "commercial-evidence", "voc-pains",
+                "product-opportunity", "decision-risks", "candidate-pool", "evidence-trace",
+                "data-download", "follow-up-consultation",
+            ]
+            positions = [html_text.index(f'id="{section}"') for section in expected_sections]
+            self.assertEqual(positions, sorted(positions))
             self.assertIn("不是抓取失败", markdown_text)
+            self.assertIn("家居收纳", html_text)
+            self.assertNotIn("宠物清洁", html_text)
 
     def test_workbook_export_prefers_clean_screening_snapshots(self):
         with tempfile.TemporaryDirectory() as tmp:

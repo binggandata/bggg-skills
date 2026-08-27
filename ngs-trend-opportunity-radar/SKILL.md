@@ -13,6 +13,7 @@ description: Discover and validate concrete ecommerce product opportunities from
 - 不把 Google Trends 相对指数、搜索可见样本或单条爆款当成销量或全量市场。
 - 不为缺失字段补造数字；来源不支持目标市场时明确降级。
 - 不采集 X；它不是本 Skill 的默认或可选数据源。
+- 一次运行只研究一个用户给定品类。用户同时给出多个品类时，拆成多个独立运行目录，分别采集、统计并交付各自的 `report.html`、`research_data.xlsx`、`report.md`；不得合并成一份正式报告或工作簿。跨品类总览只能在全部单品类交付完成后作为可选附加件生成。
 - Reddit 使用内置 `bggg-data-reddit` 模块；API 失败时正式回退到用户已登录的 `old.reddit.com`。可见 DOM 只能作为明确标记的小样本，不能冒充完整评论树。
 - TikTok 采集只使用用户选定、已登录的真实 Chrome；内置模块只负责查询计划、页面可见数据规范化和落盘，不自行启动独立浏览器、不换匿名接口。语言只能证明语言匹配，不能单独证明地理市场。
 - 首次调用展示 3 项业务信息（研究品类、目标市场、平台）和 1 项交付设置（输出位置）；只追问缺失项，不替用户默选。
@@ -22,7 +23,7 @@ description: Discover and validate concrete ecommerce product opportunities from
 
 ## 固定工作流
 
-1. 读取 [`references/research-brief.md`](references/research-brief.md)，首次使用时先检查 Sorftime MCP，再展示并整理《趋势选品启动卡》。若 Sorftime 尚未连接，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 给出 `https://open.sorftime.com/mcp`，说明注册权益并提示用户在 MCP 设置中填写 Key；不接收明文 Key。复用用户已给信息，只追问研究品类、目标市场、平台和输出位置中的缺失项；不要追加售价、毛利、排除项或筛选范围。输出位置是交付设置，不是选品条件。
+1. 读取 [`references/research-brief.md`](references/research-brief.md)，首次使用时先检查 Sorftime MCP，再展示并整理《趋势选品启动卡》。若 Sorftime 尚未连接，按 [`references/sorftime-budget.md`](references/sorftime-budget.md) 给出 `https://open.sorftime.com/mcp`，说明注册权益并提示用户在 MCP 设置中填写 Key；不接收明文 Key。复用用户已给信息，只追问研究品类、目标市场、平台和输出位置中的缺失项；不要追加售价、毛利、排除项或筛选范围。输出位置是交付设置，不是选品条件。若用户给了多个研究品类，先按品类拆成独立任务和独立输出目录，再逐个运行，不共用候选池或正式数据表。
 2. 业务卡齐全后，按 [`references/login-session-routing.md`](references/login-session-routing.md) 只读检查可用登录环境。只有一个时回显；多个时先让用户选择统一环境或按 Google Trends／TikTok／Reddit 浏览器回退分配，选择前不采集。
 3. 回显业务卡、登录态选择、三个免费源的固定快筛范围，以及 Sorftime 类目树预算。每个研究品类默认 5 次：1 次查看第一层、4 次展开用户确认的分支。用户可改为少于 4 个、超过 4 个或不展开；超过默认预算时先展示新增次数，确认后才调用。
 4. 先判断研究品类粒度：`家居收纳`、`宠物清洁`这类业务品类进入官方类目树；`Home & Kitchen` 这类平台一级大类先让用户收窄，已具体到单一商品或 SKU 则跳过候选漏斗，改走单品验证。先用 Sorftime `category_name_search` 定位语义匹配的正式节点，必要时用 `category_tree` 从站点顶层逐级定位；不得用 `category_search_from_product_name` 代替业务品类的类目树枚举，也不得由模型凭经验拆名单。
@@ -56,10 +57,10 @@ python3 scripts/bggg_data_reddit_visible_normalize.py --inputs '<run>/work/reddi
 python3 scripts/analyze_reddit_samples.py --inputs '<run>/data/raw/reddit*.jsonl' --relevance '<run>/config/reddit_relevance.tsv' --output '<run>/analysis/reddit_sample_gates.json'
 python3 scripts/normalize_signals.py --inputs '<run>/data/signals/*.jsonl' --output '<run>/analysis/themes.json'
 python3 scripts/analyze_review_pains.py --input '<run>/data/raw/amazon_woot_<date>.jsonl' --taxonomy '<run>/config/pain_taxonomy.json' --output '<run>/analysis/amazon_pain_stats.json'
-python3 scripts/export_audit_csv.py --run-dir '<run>'
+python3 scripts/export_audit_csv.py --run-dir '<run>' --research-category '<research category>'
 # 按 Spreadsheets Skill 提供的 Node 运行时和 @oai/artifact-tool 环境执行：
-node scripts/build_research_workbook.mjs --run-dir '<run>'
-python3 scripts/render_screening_report.py --run-dir '<run>' --out-dir '<run>/report'
+node scripts/build_research_workbook.mjs --run-dir '<run>' --report-label '<research category>'
+python3 scripts/render_screening_report.py --run-dir '<run>' --research-category '<research category>' --out-dir '<run>/report'
 python3 scripts/rank_candidates.py --input '<run>/analysis/candidates.json' --output '<run>/analysis/opportunity_pool.json'
 python3 scripts/render_report.py --brief '<run>/00-research-brief/research_brief.json' --pool '<run>/analysis/opportunity_pool.json' --run-dir '<run>' --out-dir '<run>/report'
 python3 scripts/validate_run.py --run-dir '<run>' --soft-call-cap '<displayed default budget>' --hard-call-cap '<user-approved cap>'
@@ -84,6 +85,8 @@ TikTok 必须在用户选定、已登录的真实 Chrome 中采集；内置 `bgg
 1. `report/report.html`：主报告。快筛阶段展示完整候选池、六张实际数据图、每个方向的去留理由和 Top N 选择入口；深验阶段再增加代表 ASIN、Amazon 真实痛点、产品机会与风险。不得用深验模板伪装尚未运行的数据。
 2. `report/research_data.xlsx`：唯一正式数据文件，含 10 个按渠道拆分的工作表，Reddit 帖子和评论独立成表。
 3. `report/report.md`：方便复制、归档或确认后发布飞书的轻量文字版。
+
+这三个文件只对应启动卡中的一个研究品类。多个品类必须各有一套三件套和独立目录，不能用跨品类混合工作簿代替；可选总览不属于单次运行的正式三件套。
 
 运行目录同时保留审计材料，但不作为用户必须逐个打开的交付：原始 JSON／JSONL、内部 CSV、Sorftime 调用日志、证据索引、痛点统计、A／B／C／D 机会池、截图、工作簿预览、失败日志和 `quality/validation.json`。
 

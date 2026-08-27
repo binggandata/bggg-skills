@@ -19,9 +19,20 @@ const SHEETS = [
 const CSV_TO_SHEET = Object.fromEntries(SHEETS.map(([csv, sheet]) => [csv, sheet]));
 
 function parseArgs(argv) {
-  const at = argv.indexOf("--run-dir");
-  if (at === -1 || !argv[at + 1]) throw new Error("Usage: build_research_workbook.mjs --run-dir <run>");
-  return path.resolve(argv[at + 1]);
+  const value = (name) => {
+    const at = argv.indexOf(name);
+    return at >= 0 && argv[at + 1] ? path.resolve(argv[at + 1]) : null;
+  };
+  const labelAt = argv.indexOf("--report-label");
+  const runDir = value("--run-dir");
+  if (!runDir) throw new Error("Usage: build_research_workbook.mjs --run-dir <run> [--source-dir <csv-dir>] [--output-dir <report-dir>] [--quality-dir <quality-dir>] [--report-label <label>]");
+  return {
+    runDir,
+    sourceDir: value("--source-dir") || path.join(runDir, "work", "workbook-sources"),
+    outputDir: value("--output-dir") || path.join(runDir, "report"),
+    qualityDir: value("--quality-dir") || path.join(runDir, "quality"),
+    reportLabel: labelAt >= 0 && argv[labelAt + 1] ? argv[labelAt + 1] : "",
+  };
 }
 
 function parseCsv(text) {
@@ -115,10 +126,7 @@ function sheetNote(sheetIndex, data, headers, brief) {
   return notes[sheetIndex];
 }
 
-const runDir = parseArgs(process.argv.slice(2));
-const sourceDir = path.join(runDir, "work", "workbook-sources");
-const outputDir = path.join(runDir, "report");
-const qualityDir = path.join(runDir, "quality");
+const { runDir, sourceDir, outputDir, qualityDir, reportLabel } = parseArgs(process.argv.slice(2));
 const previewDir = path.join(qualityDir, "workbook-previews");
 const brief = JSON.parse(await fs.readFile(path.join(runDir, "00-research-brief", "research_brief.json"), "utf8"));
 await fs.mkdir(outputDir, { recursive: true });
@@ -150,7 +158,7 @@ for (let sheetIndex = 0; sheetIndex < SHEETS.length; sheetIndex += 1) {
 
   sheet.showGridLines = false;
   sheet.getRange(`A1:${lastCol}1`).merge();
-  sheet.getRange("A1").values = [[sheetName]];
+  sheet.getRange("A1").values = [[reportLabel ? `${reportLabel}｜${sheetName}` : sheetName]];
   sheet.getRange(`A2:${lastCol}2`).merge();
   sheet.getRange("A2").values = [[`${note}｜数据行：${data.length}`]];
   sheet.getRange(`A4:${lastCol}4`).values = [headers];

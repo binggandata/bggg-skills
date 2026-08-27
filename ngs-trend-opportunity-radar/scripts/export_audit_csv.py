@@ -189,9 +189,23 @@ def fields_with_rows(base: list[str], rows: list[dict]) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-dir", required=True)
+    parser.add_argument("--research-category")
+    parser.add_argument("--output-dir")
     args = parser.parse_args()
     run = Path(args.run_dir)
-    out = run / "work" / "workbook-sources"
+    out = Path(args.output_dir) if args.output_dir else run / "work" / "workbook-sources"
+    candidates_payload = load_json(run / "analysis" / "candidates.json", {}) or {}
+    all_candidates = candidates_payload.get("candidates") or []
+    selected_candidates = [
+        row for row in all_candidates
+        if not args.research_category or row.get("research_category") == args.research_category
+    ]
+    allowed_ids = {str(row.get("id")) for row in selected_candidates if row.get("id")}
+    if args.research_category and not allowed_ids:
+        raise SystemExit(f"Unknown or empty research category: {args.research_category}")
+
+    def allowed(candidate_id) -> bool:
+        return not args.research_category or str(candidate_id or "") in allowed_ids
     for legacy_name in (
         "04_sorftime_categories.csv",
         "05_sorftime_products.csv",
@@ -210,6 +224,8 @@ def main() -> int:
     trend_rows = []
     if trend_signal_file:
         for row in load_jsonl(trend_signal_file):
+            if not allowed(row.get("theme")):
+                continue
             context = row.get("context") or {}
             date_match = re.search(r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|", str(row.get("text_raw") or ""))
             trend_rows.append({
@@ -249,6 +265,7 @@ def main() -> int:
     write_csv(out / "01_google_trends.csv", trend_rows, fields_with_rows(trend_fields, trend_rows))
 
     tiktok = load_jsonl_files(tiktok_files)
+    tiktok = [row for row in tiktok if allowed((row.get("context") or {}).get("candidate_id"))]
     content_fields = list(flatten_content({}).keys())
     tiktok_videos = [flatten_content(row) for row in tiktok if row.get("content_type") == "video"]
     tiktok_comments = [flatten_content(row) for row in tiktok if row.get("content_type") in {"comment", "reply"}]
@@ -258,6 +275,7 @@ def main() -> int:
     write_csv(out / "03_tiktok_comments.csv", tiktok_comments, fields_with_rows(["status", "reason"] + content_fields, tiktok_comments))
 
     reddit = load_jsonl_files(reddit_files)
+    reddit = [row for row in reddit if allowed((row.get("context") or {}).get("candidate_id"))]
     reddit_posts = [flatten_content(row) for row in reddit if (row.get("context") or {}).get("content_type") == "post"]
     reddit_comments = [flatten_content(row) for row in reddit if (row.get("context") or {}).get("content_type") == "comment"]
     write_csv(out / "04_reddit_posts.csv", reddit_posts, fields_with_rows(content_fields, reddit_posts))
@@ -267,9 +285,12 @@ def main() -> int:
 
     pool = load_json(run / "analysis" / "opportunity_pool.json", {}) or {}
     screening = load_json(run / "analysis" / "screening_funnel.json", {}) or {}
-    screening_by_id = {row.get("candidate_id"): row for row in screening.get("directions") or []}
+    screening_by_id = {
+        row.get("candidate_id"): row for row in screening.get("directions") or []
+        if allowed(row.get("candidate_id"))
+    }
     category_rows = []
-    pool_candidates = pool.get("candidates") or []
+    pool_candidates = [row for row in (pool.get("candidates") or []) if allowed(row.get("candidate_id"))]
     if pool_candidates:
         for candidate in pool_candidates:
             sorftime = candidate.get("sorftime") or {}
@@ -281,8 +302,7 @@ def main() -> int:
                 **(sorftime.get("data") or {}), "source_file": sorftime.get("response_file"),
             })
     else:
-        candidates = load_json(run / "analysis" / "candidates.json", {}) or {}
-        for candidate in candidates.get("candidates") or []:
+        for candidate in selected_candidates:
             market = candidate.get("sorftime_market") or {}
             funnel_row = screening_by_id.get(candidate.get("id")) or {}
             sf = funnel_row.get("sorftime") or {}
@@ -310,6 +330,8 @@ def main() -> int:
 
     product_files = sorftime_product_files(run)
     product_rows = load_sorftime_products(product_files, run)
+    if args.research_category:
+        product_rows = [row for row in product_rows if allowed(row.get("candidate_id"))]
     if not product_rows:
         product_rows = placeholder("not_run", "等待用户选择 Top N；本阶段未调用 Sorftime product_search")
     product_fields = ["status", "reason", "rank", "asin", "title", "price", "star_rating", "review_count", "monthly_sales_volume", "main_image", "url", "semantic_relevance", "source_file", "online_date"]
@@ -317,12 +339,15 @@ def main() -> int:
 
     amazon_files = sorted((run / "data" / "raw").glob("amazon_woot_*.jsonl"))
     amazon = load_jsonl(amazon_files[-1]) if amazon_files else []
+    if args.research_category:
+        amazon = [row for row in amazon if allowed((row.get("context") or {}).get("candidate_id"))]
     amazon_rows = [flatten_content(row) for row in amazon]
     if not amazon_rows:
         amazon_rows = placeholder("not_run", "等待用户选择 Top N；本阶段未采集 Amazon 书面评论")
     write_csv(out / "08_amazon_reviews.csv", amazon_rows, fields_with_rows(["status", "reason"] + content_fields, amazon_rows))
 
     evidence = load_json(run / "analysis" / "evidence_index.json", []) or []
+    evidence = [row for row in evidence if allowed(row.get("candidate_id"))]
     if not evidence:
         evidence = []
         for candidate_id in dict.fromkeys(row.get("candidate_id") for row in trend_rows):
@@ -340,14 +365,22 @@ def main() -> int:
                     "text_raw": row.get("text_raw") or f"{row.get('term') or ''} {row.get('date') or ''} = {row.get('relative_search_interest') or ''}",
                     "pain_label": None,
                 })
-        (run / "analysis" / "evidence_index.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     evidence_fields = ["candidate_id", "theme", "source_id", "platform", "content_type", "url", "text_raw", "pain_label"]
     write_csv(out / "09_evidence_index.csv", evidence, fields_with_rows(evidence_fields, evidence))
 
     calls = [row for row in load_jsonl(run / "sorftime" / "call_log.jsonl") if row.get("tool")]
     brief = load_json(run / "00-research-brief" / "research_brief.json", {}) or {}
     category_budget = brief.get("category_tree_budget") or {}
-    sorftime_total = int(category_budget.get("first_level_calls_already_completed") or 0) + int(category_budget.get("branch_expansion_calls") or 0) + int((load_json(run / "sorftime" / "category_reports_summary.json", {}) or {}).get("calls") or 0)
+    if args.research_category:
+        tree_calls = int(category_budget.get("per_category") or 0)
+        report_calls = len(category_rows)
+        sorftime_total = tree_calls + report_calls
+        sorftime_detail = f"{tree_calls} category-tree calls + {report_calls} category reports; product_search not run"
+    else:
+        tree_calls = int(category_budget.get("first_level_calls_already_completed") or 0) + int(category_budget.get("branch_expansion_calls") or 0)
+        report_calls = int((load_json(run / "sorftime" / "category_reports_summary.json", {}) or {}).get("calls") or 0)
+        sorftime_total = tree_calls + report_calls
+        sorftime_detail = f"{tree_calls} category-tree calls + {report_calls} category reports; product_search not run"
     if not sorftime_total:
         sorftime_total = len(calls)
     tiktok_video_count = sum(1 for row in tiktok if row.get("content_type") == "video")
@@ -359,11 +392,11 @@ def main() -> int:
         {"source": "Google Trends", "count": len(trend_rows), "unit": "weekly points", "detail": f"{len(trend_series)} term/window/market series; 0 failures", "status": "completed", "file": "01_google_trends.csv"},
         {"source": "TikTok", "count": tiktok_video_count, "unit": "videos", "detail": f"{tiktok_comment_count} comments; screening uses logged-in Chrome", "status": "screening_completed", "file": "02_tiktok_videos.csv / 03_tiktok_comments.csv"},
         {"source": "Reddit", "count": reddit_post_count, "unit": "parent posts", "detail": f"{reddit_comment_count} comments; modes: {', '.join(sorted({str((row.get('context') or {}).get('collection_mode') or 'unknown') for row in reddit})) or 'not_run'}", "status": "screening_completed", "file": "04_reddit_posts.csv / 05_reddit_comments.csv"},
-        {"source": "Sorftime", "count": sorftime_total, "unit": "business calls", "detail": f"10 category-tree calls + 8 category reports; product_search not run", "status": "screening_completed", "file": "06_sorftime_categories.csv / 07_sorftime_products.csv"},
+        {"source": "Sorftime", "count": sorftime_total, "unit": "business calls", "detail": sorftime_detail, "status": "screening_completed", "file": "06_sorftime_categories.csv / 07_sorftime_products.csv"},
         {"source": "Amazon", "count": len(amazon), "unit": "written reviews", "detail": f"{len({asin for row in amazon for asin in ((row.get('context') or {}).get('asins') or [])})} ASINs; waiting for Top N", "status": "not_run", "file": "08_amazon_reviews.csv"},
     ]
     write_csv(out / "00_data_coverage.csv", coverage, ["source", "count", "unit", "detail", "status", "file"])
-    print(json.dumps({"output_dir": str(out), "csv_files": len(list(out.glob("*.csv"))), "amazon_reviews": len(amazon)}, ensure_ascii=False))
+    print(json.dumps({"output_dir": str(out), "research_category": args.research_category, "candidate_ids": sorted(allowed_ids), "csv_files": len(list(out.glob("*.csv"))), "amazon_reviews": len(amazon)}, ensure_ascii=False))
     return 0
 
 
