@@ -1,0 +1,12 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules
+outputs/
+projects/
+trend-radar-outputs/
+*.log
+*.tmp
+*.zip

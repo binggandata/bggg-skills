@@ -22,6 +22,7 @@ Created by [@binggandata](https://github.com/binggandata) · [小红书](https:/
 - [`bggg-tiktok-cut`](./bggg-tiktok-cut): render 9:16 TikTok edits from AI videos, local footage, or talking-head clips using JSON edit plans and FFmpeg.
 - [`bggg-tiktok-capcut`](./bggg-tiktok-capcut): create new editable CapCut drafts from template drafts, extract styles, validate draft structure, and check AI-video artifacts.
 - [`tiktok-gemini-video-workflow`](./tiktok-gemini-video-workflow): turn product images and viral videos in Feishu Base into a trackable, reviewable TikTok commerce-video workflow with Gemini/Flow quota routing, 9:16 storyboards, frame-by-frame prompts, tail-frame continuation, post-processing QA, and artifact write-back.
+- [`ngs-trend-opportunity-radar`](./ngs-trend-opportunity-radar): expand a user-defined broad category into concrete product directions, cross-check them with Google Trends, TikTok, Reddit, Sorftime, and Amazon written reviews, and produce an auditable trend-opportunity report and research workbook.
 - [`sif-keyword-scout`](./sif-keyword-scout): process three Amazon Sif keyword exports, grade keyword layers, analyze competitor weaknesses and ad gaps, then generate PD focus keyword sheets and Word reports.
 - [`sif-keyword-tracker`](./sif-keyword-tracker): compare two historical PD keyword lists for the same ASIN within a 1-7 day window and generate keyword-change and campaign-action reports.
 - [`web-access`](./web-access): third-party MIT skill from [eze-is/web-access](https://github.com/eze-is/web-access); optionally used by the Sif workflow for browser/CDP exports.
@@ -45,6 +46,7 @@ cp -R bggg-creator-image2ppt ~/.codex/skills/
 cp -R bggg-tiktok-search bggg-tiktok-downloader ~/.codex/skills/
 cp -R bggg-tiktok-readvideo ~/.codex/skills/
 cp -R bggg-tiktok-cut bggg-tiktok-capcut ~/.codex/skills/
+cp -R ngs-trend-opportunity-radar bggg-data-amazon ~/.codex/skills/
 cp -R sif-keyword-scout sif-keyword-tracker web-access ~/.codex/skills/
 cp -R xquik-x-research ~/.codex/skills/
 cp .sif-config.example.json ~/.codex/skills/
@@ -60,6 +62,8 @@ ln -s "$PWD/bggg-tiktok-downloader" ~/.codex/skills/bggg-tiktok-downloader
 ln -s "$PWD/bggg-tiktok-readvideo" ~/.codex/skills/bggg-tiktok-readvideo
 ln -s "$PWD/bggg-tiktok-cut" ~/.codex/skills/bggg-tiktok-cut
 ln -s "$PWD/bggg-tiktok-capcut" ~/.codex/skills/bggg-tiktok-capcut
+ln -s "$PWD/ngs-trend-opportunity-radar" ~/.codex/skills/ngs-trend-opportunity-radar
+ln -s "$PWD/bggg-data-amazon" ~/.codex/skills/bggg-data-amazon
 ln -s "$PWD/sif-keyword-scout" ~/.codex/skills/sif-keyword-scout
 ln -s "$PWD/sif-keyword-tracker" ~/.codex/skills/sif-keyword-tracker
 ln -s "$PWD/web-access" ~/.codex/skills/web-access
@@ -72,6 +76,7 @@ If the skill has `scripts/requirements.txt`, install its dependencies:
 ```bash
 python3 -m pip install -r ~/.codex/skills/bggg-creator-image2psd/scripts/requirements.txt
 python3 -m pip install -r ~/.codex/skills/bggg-creator-image2ppt/scripts/requirements.txt
+python3 -m pip install -r ~/.codex/skills/ngs-trend-opportunity-radar/scripts/requirements.txt
 ```
 
 The Sif keyword workflow needs:
@@ -123,6 +128,7 @@ bggg-skills/
 ├── bggg-tiktok-cut/
 ├── bggg-tiktok-capcut/
 ├── tiktok-gemini-video-workflow/
+├── ngs-trend-opportunity-radar/
 ├── sif-keyword-scout/
 ├── sif-keyword-tracker/
 ├── web-access/
