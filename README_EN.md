@@ -26,6 +26,7 @@ Created by [@binggandata](https://github.com/binggandata) · [小红书](https:/
 - [`sif-keyword-tracker`](./sif-keyword-tracker): compare two historical PD keyword lists for the same ASIN within a 1-7 day window and generate keyword-change and campaign-action reports.
 - [`web-access`](./web-access): third-party MIT skill from [eze-is/web-access](https://github.com/eze-is/web-access); optionally used by the Sif workflow for browser/CDP exports.
 - [`xquik-x-research`](./xquik-x-research): API-key-only X research skill for tweet search, profile lookup, follower exports, media downloads, monitors, webhooks, and MCP setup through Xquik.
+- [`bggg-copy-app`](./bggg-copy-app): clean-room, high-fidelity Android app replication methodology: ADB device control, uiautomator tree + screenshot parsing, L0–L5 depth standards, step-by-step and behavior-level comparison (duration/ownership/billing/notifications/failure recovery), evidence and open-source delivery.
 
 ## Install
 
@@ -47,6 +48,7 @@ cp -R bggg-tiktok-readvideo ~/.codex/skills/
 cp -R bggg-tiktok-cut bggg-tiktok-capcut ~/.codex/skills/
 cp -R sif-keyword-scout sif-keyword-tracker web-access ~/.codex/skills/
 cp -R xquik-x-research ~/.codex/skills/
+cp -R bggg-copy-app ~/.codex/skills/
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -64,6 +66,7 @@ ln -s "$PWD/sif-keyword-scout" ~/.codex/skills/sif-keyword-scout
 ln -s "$PWD/sif-keyword-tracker" ~/.codex/skills/sif-keyword-tracker
 ln -s "$PWD/web-access" ~/.codex/skills/web-access
 ln -s "$PWD/xquik-x-research" ~/.codex/skills/xquik-x-research
+ln -s "$PWD/bggg-copy-app" ~/.codex/skills/bggg-copy-app
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -90,6 +93,7 @@ bggg-skills/
 ├── README_EN.md
 ├── LICENSE
 ├── .sif-config.example.json
+├── bggg-copy-app/
 ├── bggg-creator-image2psd/
 │   ├── SKILL.md
 │   ├── README.md

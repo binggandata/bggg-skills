@@ -26,6 +26,7 @@ Created by [@binggandata](https://github.com/binggandata) · [小红书](https:/
 - [`sif-keyword-tracker`](./sif-keyword-tracker)：同一 ASIN 有历史记录时，对比 1-7 天窗口内两期 PD 词单，输出词库更新与投放建议报告。
 - [`web-access`](./web-access)：第三方 MIT skill，由 [eze-is/web-access](https://github.com/eze-is/web-access) 提供；在 Sif 工作流中可选用于浏览器 CDP 自动导出。
 - [`xquik-x-research`](./xquik-x-research)：通过 Xquik 做 API-key-only X 调研，覆盖 tweet search、profile lookup、follower export、media download、monitor、webhook 和 MCP setup。
+- [`bggg-copy-app`](./bggg-copy-app)：Android App 净室/高保真复刻方法论：ADB 接管真机、uiautomator 语义树+截图解析、L0–L5 深度标准、同流程逐状态对比与效果级验收（时长/版本归属/计费/通知/失败恢复）、证据沉淀与开源交付。
 
 ## 安装
 
@@ -47,6 +48,7 @@ cp -R bggg-tiktok-readvideo ~/.codex/skills/
 cp -R bggg-tiktok-cut bggg-tiktok-capcut ~/.codex/skills/
 cp -R sif-keyword-scout sif-keyword-tracker web-access ~/.codex/skills/
 cp -R xquik-x-research ~/.codex/skills/
+cp -R bggg-copy-app ~/.codex/skills/
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -64,6 +66,7 @@ ln -s "$PWD/sif-keyword-scout" ~/.codex/skills/sif-keyword-scout
 ln -s "$PWD/sif-keyword-tracker" ~/.codex/skills/sif-keyword-tracker
 ln -s "$PWD/web-access" ~/.codex/skills/web-access
 ln -s "$PWD/xquik-x-research" ~/.codex/skills/xquik-x-research
+ln -s "$PWD/bggg-copy-app" ~/.codex/skills/bggg-copy-app
 cp .sif-config.example.json ~/.codex/skills/
 ```
 
@@ -90,6 +93,7 @@ bggg-skills/
 ├── README_EN.md
 ├── LICENSE
 ├── .sif-config.example.json
+├── bggg-copy-app/
 ├── bggg-creator-image2psd/
 │   ├── SKILL.md
 │   ├── README.md
